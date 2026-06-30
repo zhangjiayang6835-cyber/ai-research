@@ -3,13 +3,13 @@ import os
 import sys
 
 headers = {'Authorization': f'token {token}', 'User-Agent': 'monitor-agent'}
-    if not os.path.exists(filepath):
-        print(f"File not found: {filepath}")
+    if not os.path.exists(path):
+        print(f"File not found: {path}")
         return None
-    return yaml.safe_load(open(filepath, 'r'))
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
+# ... rest of check_issues.py ...
     comments = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}/comments')
     issue = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}')
     title = issue['title'].replace('\U0001f41b', '[bug]').replace('\U0001f4b0', '[money]')
