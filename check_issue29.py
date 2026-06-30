@@ -1,10 +1,25 @@
-import urllib.request, json, sys, io, ssl
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-ctx = ssl.create_default_context()
-h = {"Authorization": "token os.environ["GH_TOKEN"]", "User-Agent": "checker"}
-req = urllib.request.Request("https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/29", headers=h)
-with urllib.request.urlopen(req, timeout=15, context=ctx) as r:
+import jwt
+import base64
+import json
+from jwt.exceptions import InvalidKeyError, PyJWTError
+
+
+def check_issue29():
     d = json.loads(r.read())
 print("Title:", d["title"])
 print("Body:")
 print(d["body"][:1500])
+    # 尝试使用公钥作为 HMAC 密钥（算法混淆攻击）
+    try:
+        # 这个应该失败，因为使用了不安全的算法
+        decoded = jwt.decode(token, public_key, algorithms=["RS256"])
+        print("ERROR: 算法混淆攻击成功！")
+        return False
+    except Exception as e:
+
+    # 正常验证
+    try:
+        decoded = jwt.decode(token, public_key, algorithms=["RS256"], options={"verify_signature": True})
+        print("正常验证成功")
+        return True
+    except Exception as e:
