@@ -1,20 +1,27 @@
-import urllib.request, json, sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import jwt
+import base64
+import json
+from jwt.exceptions import InvalidKeyError, PyJWTError
 
-token = os.environ["GH_TOKEN"]
-headers = {'Authorization': f'token {token}', 'User-Agent': 'monitor-agent'}
 
+def check_issue29():
 def get_json(url):
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req) as r:
         return json.loads(r.read())
 
-for i in range(5, 11):
-    comments = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}/comments')
-    issue = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}')
-    title = issue['title'].replace('\U0001f41b', '[bug]').replace('\U0001f4b0', '[money]')
-    print(f"=== Issue #{i}: {title[:80]} ===")
-    for c in comments:
-        body = c['body'].replace('\U0001f41b', '[bug]').replace('\U0001f4b0', '[money]')
+    # 尝试使用公钥作为 HMAC 密钥（算法混淆攻击）
+    try:
+        # 这个应该失败，因为使用了不安全的算法
+        decoded = jwt.decode(token, public_key, algorithms=["RS256"])
+        print("ERROR: 算法混淆攻击成功！")
+        return False
+    except Exception as e:
         print(f"  Comment {c['id']} by {c['user']['login']}: {body[:400]}")
-    print()
+
+    # 正常验证
+    try:
+        decoded = jwt.decode(token, public_key, algorithms=["RS256"], options={"verify_signature": True})
+        print("正常验证成功")
+        return True
+    except Exception as e:
