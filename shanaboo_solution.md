@@ -1,24 +1,123 @@
  ```diff
---- a/honeycode-honeypot/graphql_server.py
-+++ b/honeycode-honeypot/graphql_server.py
+--- a/honeycode-honeypot
++++ b/honeycode-honeypot
 @@ -0,0 +1,0 @@
-+"""
-+Secure GraphQL server with depth limiting and batching protection.
-+Fixes: GraphQL Depth Bypass + Batching → Data Exfiltration
-+"""
-+
-+import json
-+import hashlib
-+import time
-+from typing import Any, List, Dict, Optional
-+from functools import wraps
-+
-+
-+class GraphQLSecurityError(Exception):
-+    """Raised when a GraphQL security policy is violated."""
-+    pass
-+
-+
-+class QueryDepthLimiter:
-+    """
-,    "    "    "    "    "    "
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql_security.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/graphql_security.py
++++ b/honeycode-honeypot/graphql
