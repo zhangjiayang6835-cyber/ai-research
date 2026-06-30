@@ -1,15 +1,15 @@
-import urllib.request, urllib.error, json, sys, io, time, re, os, ssl
+import yaml, yaml.constructor
+import os
+import sys
 
-TOKEN = os.environ.get("GH_TOKEN", "")
-HEADERS = {"Authorization": "token " + TOKEN, "User-Agent": "monitor-agent-v9"}
 API = "https://api.github.com/repos/zhangjiayang6835-cyber/ai-research"
-LEADERBOARD_COMMENT_ID = 4834744003
-TIME_LEADERBOARD_ISSUE = 29
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else os.getcwd()
-LOG_FILE = os.path.join(SCRIPT_DIR, "monitor.log")
-TRAINING_DATA_FILE = os.path.join(SCRIPT_DIR, "training_data.jsonl")
+    if not os.path.exists(path):
+        print(f"File not found: {path}")
+        return None
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
 
-DIFFICULTY = {}
+# ... rest of monitor.py ...
 ISSUE_NAMES = {}
 ISSUE_CREATED = {}
 
