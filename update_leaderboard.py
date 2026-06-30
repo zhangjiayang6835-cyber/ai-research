@@ -1,7 +1,8 @@
 import urllib.request, json, sys, io, ssl
+import os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 ctx = ssl.create_default_context()
-h = {"Authorization": "token os.environ["GH_TOKEN"]", "User-Agent": "updater"}
+h = {"Authorization": f"token {os.environ['GH_TOKEN']}", "User-Agent": "updater"}
 
 tasks = [
     (5,"SQL注入","medium"),(6,"命令注入","medium"),(7,"XSS","medium"),(8,"SSRF","medium"),
