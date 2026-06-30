@@ -1,176 +1,150 @@
  ```diff
 --- a/notify_email.py
 +++ b/notify_email.py
-@@ -1,1 +1,100 @@
-+#!/usr/bin/env python3
-+"""
-+Email notification module with SPF/DKIM/DMARC verification.
-+Fixes email spoofing vulnerability by validating sender identity.
-+"""
-+
-+import dns.resolver
-+import re
-+import ipaddress
+@@ -1,1 +1,1 @@
+-import os
++import os
+@@ -2,1 +2,1 @@
+-import smtplib
++import smtplib
+@@ -3,1 +3,1 @@
+-from email.mime.text import MIMEText
++from email.mime.text import MIMEText
+@@ -4,1 +4,1 @@
+-from email.mime.multipart import MIMEMultipart
++from email.mime.multipart import MIMEMultipart
+@@ -5,1 +5,1 @@
+-import logging
++import logging
+@@ -6,1 +6,1 @@
+-from typing import Optional, List
 +from typing import Optional, List
-+
-+
-+class EmailSecurityError(Exception):
-+    """Raised when email security checks fail."""
-+    pass
-+
-+
-+def verify_spf(sender_ip: str, sender_domain: str) -> bool:
-+    """
-+    Verify SPF record for the sender domain.
-+    Returns True if the sender IP is authorized.
-+    """
+@@ -7,1 +7,1 @@
+-
++import dkim
+@@ -8,1 +8,1 @@
+-logger = logging.getLogger(__name__)
++logger = logging.getLogger(__name__)
+@@ -9,1 +9,1 @@
+-
++SPF_PASS = "pass"
+@@ -10,1 +10,1 @@
+-DEFAULT_FROM = os.getenv("NOTIFY_EMAIL_FROM", "noreply@example.com")
++DKIM_PASS = "pass"
+@@ -11,1 +11,1 @@
+-SMTP_HOST = os.getenv("SMTP_HOST", "localhost")
++DEFAULT_FROM = os.getenv("NOTIFY_EMAIL_FROM", "noreply@example.com")
+@@ -12,1 +12,1 @@
+-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
++SMTP_HOST = os.getenv("SMTP_HOST", "localhost")
+@@ -13,1 +13,1 @@
+-SMTP_USER = os.getenv("SMTP_USER", "")
++SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+@@ -14,1 +14,1 @@
+-SMTP_PASS = os.getenv("SMTP_PASS", "")
++SMTP_USER = os.getenv("SMTP_USER", "")
+@@ -15,1 +15,1 @@
+-SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() == "true"
++SMTP_PASS = os.getenv("SMTP_PASS", "")
+@@ -16,1 +16,1 @@
+-
++SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() == "true"
+@@ -17,1 +17,1 @@
+-DKIM_SELECTOR = os.getenv("DKIM_SELECTOR", "default")
++DKIM_SELECTOR = os.getenv("DKIM_SELECTOR", "default")
+@@ -18,1 +18,1 @@
+-DKIM_DOMAIN = os.getenv("DKIM_DOMAIN", "")
++DKIM_DOMAIN = os.getenv("DKIM_DOMAIN", "")
+@@ -19,1 +19,1 @@
+-DKIM_PRIVATE_KEY_PATH = os.getenv("DKIM_PRIVATE_KEY_PATH", "")
++DKIM_PRIVATE_KEY_PATH = os.getenv("DKIM_PRIVATE_KEY_PATH", "")
+@@ -20,1 +20,1 @@
+-
++SPF_CHECK_ENABLED = os.getenv("SPF_CHECK_ENABLED", "true").lower() == "true"
+@@ -21,1 +21,1 @@
+-
++DKIM_CHECK_ENABLED = os.getenv("DKIM_CHECK_ENABLED", "true").lower() == "true"
+@@ -22,1 +22,1 @@
+-def send_email(
++def _get_dkim_private_key() -> Optional[bytes]:
+@@ -23,1 +23,1 @@
+-    to_addrs: List[str],
++    """Load DKIM private key from configured path."""
+@@ -24,1 +24,1 @@
+-    subject: str,
++    if not DKIM_PRIVATE_KEY_PATH or not os.path.exists(DKIM_PRIVATE_KEY_PATH):
+@@ -25,1 +25,1 @@
+-    body: str,
++        logger.warning("DKIM private key not found at: %s", DKIM_PRIVATE_KEY_PATH)
+@@ -26,1 +26,1 @@
+-    from_addr: Optional[str] = None,
++        return None
+@@ -27,1 +27,1 @@
+-    html: bool = False,
++    with open(DKIM_PRIVATE_KEY_PATH, "rb") as f:
+@@ -28,1 +28,1 @@
+-) -> bool:
++        return f.read()
+@@ -29,1 +29,1 @@
+-    """
++def _sign_with_dkim(msg: MIMEMultipart) -> MIMEMultipart:
+@@ -30,1 +30,1 @@
+-    Send an email notification.
++    """Sign email with DKIM if configured."""
+@@ -31,1 +31,1 @@
+-    Args:
++    private_key = _get_dkim_private_key()
+@@ -32,1 +32,1 @@
+-        to_addrs: List of recipient email addresses.
++    if not private_key:
+@@ -33,1 +33,1 @@
+-        subject: Email subject.
++        return msg
+@@ -34,1 +34,1 @@
+-        body: Email body content.
++    if not DKIM_DOMAIN:
+@@ -35,1 +35,1 @@
+-        from_addr: Sender email address (defaults to DEFAULT_FROM).
++        logger.warning("DKIM domain not configured, skipping DKIM signing")
+@@ -36,1 +36,1 @@
+-        html: Whether body is HTML.
++        return msg
+@@ -37,1 +37,1 @@
+-
 +    try:
-+        # Query SPF record
-+        answers = dns.resolver.resolve(sender_domain, 'TXT')
-+        spf_record = None
-+        for rdata in answers:
-+            for txt_string in rdata.strings:
-+                txt = txt_string.decode('utf-8') if isinstance(txt_string, bytes) else txt_string
-+                if txt.startswith('v=spf1'):
-+                    spf_record = txt
-+                    break
-+        
-+        if not spf_record:
-+            return False
-+        
-+        # Simple SPF evaluation - check for common mechanisms
-+        # In production, use a full SPF library like spf-engine
-+        if 'all' in spf_record:
-+            # Check if IP is in allowed ranges (simplified)
-+            # For proper implementation, parse include, ip4, ip6, a, mx mechanisms
-+            if '-all' in spf_record:
-+                # Strict mode - only explicitly allowed IPs
-+                pass
-+            elif '~all' in spf_record:
-+                # Soft fail - still suspicious
-+                pass
-+        
-+        # For this fix, we implement basic validation
-+        # In production, use: from spf import check
-+        return True
-+    except Exception:
-+        return False
-+
-+
-+def verify_dkim_signature(raw_email: bytes, sender_domain: str) -> bool:
-+    """
-+    Verify DKIM signature on the email.
-+    Returns True if DKIM signature is valid.
-+    """
-+    try:
-+        import dkim
-+        # Verify DKIM signature
-+        d = dkim.DKIM(raw_email)
-+        return d.verify() == dkim.DKIM_OK
-+    except ImportError:
-+        # dkim library not available, do basic header check
-+        return b'DKIM-Signature:' in raw_email
-+    except Exception:
-+        return False
-+
-+
-+def verify_dmarc(sender_domain: str) -> bool:
-+    """
-+    Verify DMARC policy for the sender domain.
-+    Returns True if DMARC policy exists and is valid.
-+    """
-+    try:
-+        answers = dns.resolver.resolve(f'_dmarc.{sender_domain}', 'TXT')
-+        for rdata in answers:
-+            for txt_string in rdata.strings:
-+                txt = txt_string.decode('utf-8') if isinstance(txt_string, bytes) else txt_string
-+                if txt.startswith('v=DMARC1'):
-+                    # DMARC record exists
-+                    if 'p=reject' in txt or 'p=quarantine' in txt:
-+                        # Strict policy - must pass SPF or DKIM
-+                        pass
-+                    return True
-+        return False
-+    except Exception:
-+        return False
-+
-+
- def send_notification(to_email: str, subject: str, body: str, 
--                       from_email: str = "noreply@airesearch.com") -> bool:
-+                       from_email: str = "noreply@airesearch.com",
-+                       sender_ip: Optional[str] = None,
-+                       raw_email: Optional[bytes] = None) -> bool:
-+    """
-+    Send email notification with SPF/DKIM/DMARC verification.
-+    
-+    Args:
-+        to_email: Recipient email address
-+        subject: Email subject
-+        body: Email body
-++        from_email: Sender email address (must be verified)
-++        sender_ip: IP address of the sender (for SPF check)
-++        raw_email: Raw email bytes (for DKIM check)
-++    
-++    Returns:
-++        True if email was sent successfully, False otherwise
-++    
-++    Raises:
-++        EmailSecurityError: If SPF/DKIM/DMARC verification fails
-+    """
-+    import smtplib
-+    from email.mime.text import MIMEText
-+    from email.utils import parseaddr
-+    
-+    # Extract domain from from_email
-+    _, sender_addr = parseaddr(from_email)
-+    sender_domain = sender_addr.split('@')[-1] if '@' in sender_addr else ''
-+    
-+    # Security: Verify sender identity if sender_ip or raw_email provided
-+    if sender_ip:
-+        # Verify SPF
-+        if not verify_spf(sender_ip, sender_domain):
-+            raise EmailSecurityError(
-++                f"SPF verification failed for {sender_domain} from IP {sender_ip}. "
-++                "Email may be spoofed."
-++            )
-+    
-+    if raw_email:
-+        # Verify DKIM
-+        if not verify_dkim_signature(raw_email, sender_domain):
-+            raise EmailSecurityError(
-++                f"DKIM verification failed for {sender_domain}. "
-++                "Email signature is invalid or missing."
-++            )
-+    
-+    # Verify DMARC policy
-+    if not verify_dmarc(sender_domain):
-+        # Log warning but don't block - DMARC not always configured
-+        import logging
-+        logging.warning(f"DMARC policy not found or invalid for {sender_domain}")
-+    
-+    # Create and send email
-+    msg = MIMEText(body)
-+    msg['Subject'] = subject
-+    msg['From'] = from_email
-+    msg['To'] = to_email
-+    
-+    # Add security headers
-+    msg['X-SPF-Verified'] = 'Yes' if sender_ip and verify_spf(sender_ip, sender_domain) else 'No'
-+    msg['X-DKIM-Verified'] = 'Yes' if raw_email and verify_dkim_signature(raw_email, sender_domain) else 'No'
-+    
-+    # In production, use actual SMTP server
-+    # For now, return True to indicate validation passed
-+    return True
-+
-+
-+def validate_incoming_email(raw_email: bytes, 
-++                            client_ip: str,
-++                            claimed_sender: str) -> dict:
-+    """
-+    Validate incoming email for spoofing attempts.
-+    Returns validation results.
-+    """
-+    from email.utils import parseaddr
-+    
-+    _, sender_addr = parseaddr(claimed_sender)
-+    sender_domain = sender_addr.split('@')[-1] if '@' in sender_addr else
+@@ -38,1 +38,1 @@
+-    Returns:
++        sig = dkim.sign(
+@@ -39,1 +39,1 @@
+-        True if email sent successfully, False otherwise.
++            message=msg.as_bytes(),
+@@ -40,1 +40,1 @@
+-    """
++            selector=DKIM_SELECTOR.encode(),
+@@ -41,1 +41,1 @@
+-    if not from_addr:
++            domain=DKIM_DOMAIN.encode(),
+@@ -42,1 +42,1 @@
+-        from_addr = DEFAULT_FROM
++            privkey=private_key,
+@@ -43,1 +43,1 @@
+-
++            include_headers=[b"from", b"to", b"subject"],
+@@ -44,1 +44,1 @@
+-    msg = MIMEMultipart("alternative")
++        )
+@@ -45,1 +45,1 @@
+-    msg["From"] = from_addr
++        # Add DKIM-Signature header
+@@ -46,1 +46,1 @@
+-    msg["To"] = ", ".join(to_addrs)
++        msg["DKIM-Signature"] = sig.decode()
+@@ -47,1 +47,1 @@
+-    msg["Subject"] = subject
++        logger.info("DKIM signature added successfully")
+@@ -48,1 +48,1 @@
+-
++    except Exception as e:
+@@ -49,1 +49,1 @@
+-    content_type = "text/html" if html else "text/plain"
++        logger
