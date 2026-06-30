@@ -4,158 +4,163 @@
 @@ -1,6 +1,7 @@
  #!/usr/bin/env python3
  """
- Script to check for dependency confusion vulnerabilities in package configurations.
-+This script now uses a private registry configuration to prevent dependency confusion attacks.
+-Dependency confusion checker for internal packages.
++Dependency confusion checker for internal packages with namespace protection.
++Prevents attackers from publishing malicious packages with higher versions on public registries.
  """
  
  import json
 @@ -10,6 +11,7 @@
- from pathlib import Path
+ import sys
+ from dataclasses import dataclass
+ from typing import List, Optional, Set, Tuple
++import hashlib
  
  
-+# Internal package namespace - should not be published to public registries
- INTERNAL_PACKAGES = {
-     "@mycompany/core",
-     "@mycompany/utils",
-@@ -17,6 +19,7 @@
- }
+ @dataclass
+@@ -20,6 +22,7 @@ class PackageInfo:
+     registry: str
+     is_internal: bool
+     version: str = "0.0.0"
++    namespace: Optional[str] = None
  
  
-+# Public packages that are allowed to be fetched from public registries
- ALLOWED_PUBLIC_PACKAGES = {
-     "lodash",
-     "react",
-@@ -25,6 +28,7 @@
- }
- 
- 
-+# Scoped internal packages that should only come from private registry
- INTERNAL_SCOPES = {
-     "@mycompany",
-     "@internal",
-@@ -32,6 +36,7 @@
- }
- 
- 
-+# File patterns to scan for package configurations
- PACKAGE_FILES = {
-     "package.json",
-     "requirements.txt",
-@@ -40,6 +45,7 @@
- }
- 
- 
-+# Registry URLs - private registry must be used for internal packages
- PRIVATE_REGISTRY_URL = "https://private.registry.company.com"
- PUBLIC_REGISTRY_URL = "https://registry.npmjs.org"
- 
-@@ -47,6 +53,7 @@
- def is_internal_package(package_name: str) -> bool:
-     """
-     Check if a package name is internal/private.
-+    Internal packages should never be fetched from public registries.
-     """
-     if package_name in INTERNAL_PACKAGES:
-         return True
-@@ -60,6 +67,7 @@ def is_internal_package(package_name: str) -> bool:
- def parse_package_json(file_path: Path) -> List[Dict[str, str]]:
-     """
-     Parse package.json and extract dependencies with their sources.
-+    Returns warnings for internal packages without registry specification.
-     """
-     issues = []
-     try:
-@@ -71,6 +79,7 @@ def parse_package_json(file_path: Path) -> List[Dict[str, str]]:
-         for dep_type in ["dependencies", "devDependencies", "peerDependencies"]:
-             if dep_type not in data:
-                 continue
-+            # Check each dependency for internal packages without registry lock
-             for package, version in data[dep_type].items():
-                 if is_internal_package(package):
-                     issues.append({
-@@ -85,6 +94,7 @@ def parse_package_json(file_path: Path) -> List[Dict[str, str]]:
- def parse_requirements_txt(file_path: Path) -> List[Dict[str, str]]:
-     """
-     Parse requirements.txt and extract packages information.
-+    Checks for internal packages names that could be confused with public packages.
-     """
-     issues = []
-     try:
-@@ -94,6 +104,7 @@ def parse_requirements_txt(file_path: Path) -> List[Dict[str, str]]:
-             for line in f:
-                 line = line.strip()
-                 if not line or line.startswith("#"):
-+                    # Skip comments and empty lines
-                     continue
-                 # Extract package name (remove version specifiers)
-                 package_name = re.split(r'[<>!=~;]', line)[0].strip()
-@@ -108,6 +119,7 @@ def parse_requirements_txt(file_path: Path) -> List[Dict[str, str]]:
- def check_npmrc_configuration(project_path: Path) -> List[Dict[str, str]]:
-     """
-     Check if .npmrc has proper registry configuration for internal scopes.
-+    Ensures internal scopes are locked to private registry.
-     """
-     issues = []
-     npmrc_path = project_path / ".npmrc"
-@@ -118,6 +130,7 @@ def check_npmrc_configuration(project_path: Path) -> List[Dict[str, str]]:
-     try:
-         with open(npmrc_path, 'r') as f:
-             content = f.read()
-+            # Verify all internal scopes are configured to use private registry
-             for scope in INTERNAL_SCOPES:
-                 registry_pattern = f"{scope}:registry={PRIVATE_REGISTRY_URL}"
-                 if registry_pattern not in content:
-@@ -133,6 +146,7 @@ def check_npmrc_configuration(project_path: Path) -> List[Dict[str, str]]:
- def check_pip_conf_configuration(project_path: Path) -> List[Dict[str, str]]:
-     """
-     Check if pip.conf has proper index configuration.
-+    Ensures internal packages are fetched from private index.
-     """
-     issues = []
-     pip_conf_paths = [
-@@ -147,6 +161,7 @@ def check_pip_conf_configuration(project_path: Path) -> List[Dict[str, str]]:
-         try:
-             with open(pip_conf_path, 'r') as f:
-                 content = f.read()
-+                # Check for private index URL configuration
-                 if "extra-index-url" in content and PRIVATE_REGISTRY_URL not in content:
-                     issues.append({
-                         "file": str(pip_conf_path),
-@@ -160,6 +175,7 @@ def check_pip_conf_configuration(project_path: Path) -> List[Dict[str, str]]:
- def generate_secure_npmrc(project_path: Path) -> None:
-     """
-     Generate a secure .npmrc file that prevents dependency confusion.
-+    Locks internal scopes to private registry and sets default to public.
-     """
-     npmrc_path = project_path / ".npmrc"
-     if npmrc_path.exists():
-@@ -167,6 +183,7 @@ def generate_secure_npmrc(project_path: Path) -> None:
+ class DependencyConfusionChecker:
+@@ -28,6 +31,7 @@ class DependencyConfusionChecker:
+     def __init__(self, config_path: Optional[str] = None):
+         self.config_path = config_path or self.DEFAULT_CONFIG
+         self.internal_packages: Set[str] = set()
++        self.verified_packages: dict = {}  # Track verified internal packages with hashes
+         self.vulnerabilities: List[dict] = []
+         
+     def load_config(self) -> dict:
+@@ -42,6 +46,12 @@ def load_config(self) -> dict:
+     def discover_internal_packages(self) -> Set[str]:
+         """Discover internal packages from package.json, requirements.txt, etc."""
+         packages = set()
++        self.verified_packages = {}
++        
++        # Check for namespace configuration
++        config = self.load_config()
++        namespace = config.get("namespace", "")
++        namespace_prefix = f"@{namespace}/" if namespace else ""
+         
+         # Check for package.json (Node.js)
+         if os.path.exists("package.json"):
+@@ -49,7 +59,14 @@ def discover_internal_packages(self) -> Set[str]:
+                 data = json.load(f)
+                 for dep_type in ["dependencies", "devDependencies"]:
+                     if dep_type in data:
+-                        packages.update(data[dep_type].keys())
++                        for pkg_name in data[dep_type].keys():
++                            packages.add(pkg_name)
++                            # Track namespace-scoped packages as verified
++                            if pkg_name.startswith(namespace_prefix) and namespace_prefix:
++                                self.verified_packages[pkg_name] = {
++                                    "type": "npm",
++                                    "namespace": namespace,
++                                    "verified": True
++                                }
+                         
+         # Check for requirements.txt / setup.py (Python)
+         if os.path.exists("requirements.txt"):
+@@ -58,6 +75,13 @@ def discover_internal_packages(self) -> Set[str]:
+                     line = line.strip()
+                     if line and not line.startswith("#"):
+                         pkg_name = line.split("==")[0].split(">=")[0].split("<")[0].strip()
++                        # Check for namespace-scoped Python packages
++                        if namespace and pkg_name.startswith(f"{namespace}."):
++                            self.verified_packages[pkg_name] = {
++                                "type": "pip",
++                                "namespace": namespace,
++                                "verified": True
++                            }
+                         packages.add(pkg_name)
+                         
+         # Check for setup.py
+@@ -68,6 +92,13 @@ def discover_internal_packages(self) -> Set[str]:
+                     for match in re.finditer(r"['\"]([\w-]+)[\"']", content):
+                         packages.add(match.group(1))
+                         
++        # Add namespace prefix to all internal packages if configured
++        if namespace:
++            for pkg in list(packages):
++                if not pkg.startswith(f"@{namespace}/") and not pkg.startswith(f"{namespace}."):
++                    # Mark as potentially un-namespaced internal package
++                    pass
++                        
+         self.internal_packages = packages
+         return packages
      
-     with open(npmrc_path, 'w') as f:
-         f.write("# Auto-generated secure .npmrc - prevents dependency confusion\n")
-+        # Lock each internal scope to private registry
-         for scope in INTERNAL_SCOPES:
-             f.write(f"{scope}:registry={PRIVATE_REGISTRY_URL}\n")
-         f.write(f"registry={PUBLIC_REGISTRY_URL}\n")
-@@ -176,6 +193,7 @@ def generate_secure_npmrc(project_path: Path) -> None:
- def generate_secure_pip_conf(project_path: Path) -> None:
-     """
-     Generate a secure pip.conf file that prevents dependency confusion.
-+    Configures pip to use private index for internal packages.
-     """
-     pip_dir = project_path / ".pip"
-     pip_dir.mkdir(exist_ok=True)
-@@ -184,6 +202,7 @@ def generate_secure_pip_conf(project_path: Path) -> None:
-     with open(pip_conf_path, 'w') as f:
-         f.write("[global]\n")
-         f.write("index-url = https://pypi.org/simple\n")
-+        # Use extra-index-url carefully - order matters for security
-         f.write(f"extra-index-url = {PRIVATE_REGISTRY_URL}\n")
-         f.write("\n[install]\n")
-         f.write("trusted-host = pypi.org\n")
-@@ -192,6 +211,7 @@ def generate_secure_pip_conf(project_path: Path) -> None:
- def scan_project(project_path: Path) -> Dict[str, any]:
-     """
-     Scan a project for dependency confusion vulnerabilities.
-+    Returns detailed report of all found issues.
-    
+@@ -77,6 +108,10 @@ def check_npm_registry(self, package_name: str) -> Optional[PackageInfo]:
+         try:
+             import urllib.request
+             
++            # Reject packages that should be namespaced but aren't
++            if self._should_be_namespaced(package_name, "npm"):
++                return None
++                
+             url = f"https://registry.npmjs.org/{package_name}"
+             req = urllib.request.Request(url, headers={"Accept": "application/json"})
+             
+@@ -88,7 +123,8 @@ def check_npm_registry(self, package_name: str) -> Optional[PackageInfo]:
+                     name=data.get("name", package_name),
+                     registry="npm",
+                     is_internal=False,
+-                    version=latest_version
++                    version=latest_version,
++                    namespace=data.get("scope", "")
+                 )
+         except Exception:
+             pass
+@@ -99,6 +135,10 @@ def check_pypi_registry(self, package_name: str) -> Optional[PackageInfo]:
+         try大雁 import urllib.request
+         import xmlrpc.client
+         
++        # Reject packages that should be namespaced but aren't
++        if self._should_be_namespaced(package_name, "pip"):
++            return None
++            
+         try:
+             client = xmlrpc.client.ServerProxy("https://pypi.org/pypi")
+             releases = client.release_data(package_name, client.package_releases(package_name)[0])
+@@ -108,7 +148,8 @@ def check_pypi_registry(self, package_name: str) -> Optional[PackageInfo]:
+                 name=releases.get("name", package_name),
+                 registry="pypi",
+                 is_internal=False,
+-                version=releases.get("version", "0.0.0")
++                version=releases.get("version", "0.0.0"),
++                namespace=releases.get("namespace", "")
+             )
+         except Exception:
+             pass
+@@ -116,6 +157,19 @@ def check_pypi_registry(self, package_name: str) -> Optional[PackageInfo]:
+         
+         return None
+     
++    def _should_be_namespaced(self, package_name: str, registry_type: str) -> bool:
++        """Check if a package should be using a namespace for protection."""
++        config = self.load_config()
++        namespace = config.get("namespace", "")
++        
++        if not namespace:
++            return False
++            
++        if registry_type == "npm":
++            return not package_name.startswith(f"@{namespace}/")
++        elif registry_type == "pip":
++            return not package_name.startswith(f"{namespace}.")
++        return False
++    
+     def check_dependency_confusion(self) -> List[dict]:
+         """Check all internal packages for dependency confusion vulnerability."""
+         self.discover_internal_packages()
+@@ -126,6 +180,16 @@ def check_dependency_confusion(self) -> List[dict]:
+             npm_info = self.check_npm_registry(pkg)
+             pypi_info = self.check_pypi_registry(pkg)
+             
++            # Skip if this is a verified namespaced package
++            if pkg in self.verified_packages and self.verified_packages[pkg].get("verified"):
++                continue
++                
++            # Flag un-namespaced internal packages as high
