@@ -1,0 +1,11 @@
+import yaml, yaml.constructor
+import os
+import sys
+
+    if not os.path.exists(path):
+        print(f"File not found: {path}")
+        return None
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+# ... rest of notify_email.py ...
