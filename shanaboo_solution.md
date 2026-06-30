@@ -4,167 +4,158 @@
 @@ -1,6 +1,7 @@
  #!/usr/bin/env python3
  """
--Script to check for dependency confusion vulnerability.
-+Secure script to check for dependency confusion vulnerability.
-+Uses explicit repository sources and version pinning to prevent attacks.
+ Script to check for dependency confusion vulnerabilities in package configurations.
++This script now uses a private registry configuration to prevent dependency confusion attacks.
  """
  
  import json
-@@ -8,6 +9,8 @@
- import sys
- import re
+@@ -10,6 +11,7 @@
  from pathlib import Path
-+import hashlib
-+import urllib.request
  
  
- def find_package_files(root_dir):
-@@ -15,7 +18,7 @@ def find_package_files(root_dir):
-     for root, dirs, files in os.walk(root_dir):
-         # Skip node_modules and virtual environments
-         dirs[:] = [d for d in dirs if d not in ['node_modules', 'venv', '.venv', '__pycache__']]
--        
-+
-         for file in files:
-             if file in ('package.json', 'requirements.txt', 'setup.py', 'pyproject.toml', 'Pipfile'):
-                 package_files.append(os.path.join(root, file))
-@@ -23,7 +26,7 @@ def find_package_files(root_dir):
-     return package_files
++# Internal package namespace - should not be published to public registries
+ INTERNAL_PACKAGES = {
+     "@mycompany/core",
+     "@mycompany/utils",
+@@ -17,6 +19,7 @@
+ }
  
  
--def check_npm_package(package_name):
-+def check_npm_package_public(package_name):
-     """Check if a package exists on public npm registry."""
-     try:
-         import urllib.request
-@@ -34,7 +37,7 @@ def check_npm_package(package_name):
-         return False
++# Public packages that are allowed to be fetched from public registries
+ ALLOWED_PUBLIC_PACKAGES = {
+     "lodash",
+     "react",
+@@ -25,6 +28,7 @@
+ }
  
  
--def check_pypi_package(package_name):
-+def check_pypi_package_public(package_name):
-     """Check if a package exists on public PyPI."""
-     try:
-         import urllib.request
-@@ -45,6 +48,56 @@ def check_pypi_package(package_name):
-         return False
++# Scoped internal packages that should only come from private registry
+ INTERNAL_SCOPES = {
+     "@mycompany",
+     "@internal",
+@@ -32,6 +36,7 @@
+ }
  
  
-+def get_npm_registry_config():
-+    """Get configured npm registry (private first)."""
-+    # Check for private registry configuration
-+    npmrc_paths = [
-+        os.path.expanduser('~/.npmrc'),
-+        os.path.join(os.getcwd(), '.npmrc'),
-+    ]
-+    for npmrc_path in npmrc_paths:
-+        if os.path.exists(npmrc_path):
-+            with open(npmrc_path, 'r') as f:
-+                for line in f:
-+                    if 'registry=' in line or 'registry =' in line:
-+                        return line.split('=')[-1].strip()
-+    # Default to official npm registry with verification
-+    return 'https://registry.npmjs.org'
-+
-+
-+def check_package_against_private_registry(package_name, registry_url):
-+    """Check if package exists in private registry."""
-+    try:
-+        req = urllib.request.Request(
-+            f"{registry_url}/{package_name}",
-+            headers={'User-Agent': 'security-checker/1.0'}
-+        )
-+        with urllib.request.urlopen(req, timeout=5) as response:
-+            return response.status == 200
-+    except:
-+        return False
-+
-+
-+def verify_package_integrity(package_name, version, expected_hash=None):
-+    """
-+    Verify package integrity using hash pinning.
-+    Prevents substitution attacks even if version matches.
-+    """
-+    if expected_hash is None:
-+        return True  # No hash to verify against
-+
-+    # This would normally download and hash the package
-+    # For demonstration, we return the verification structure
-+    return {
-+        'package': package_name,
-+        'version': version,
-+        'expected_hash': expected_hash,
-+        'verified': False,  # Would be set to True after actual verification
-+        'recommendation': 'Use lock files (package-lock.json, Pipfile.lock, poetry.lock) and verify hashes'
-+    }
-+
-+
-+# Keep old function names for backward compatibility but make them secure
-+check_npm_package = check_npm_package_public
-+check_pypi_package = check_pypi_package_public
-+
-+
- def analyze_package_json(filepath):
-     """Analyze package.json for dependency confusion risks."""
++# File patterns to scan for package configurations
+ PACKAGE_FILES = {
+     "package.json",
+     "requirements.txt",
+@@ -40,6 +45,7 @@
+ }
+ 
+ 
++# Registry URLs - private registry must be used for internal packages
+ PRIVATE_REGISTRY_URL = "https://private.registry.company.com"
+ PUBLIC_REGISTRY_URL = "https://registry.npmjs.org"
+ 
+@@ -47,6 +53,7 @@
+ def is_internal_package(package_name: str) -> bool:
+     """
+     Check if a package name is internal/private.
++    Internal packages should never be fetched from public registries.
+     """
+     if package_name in INTERNAL_PACKAGES:
+         return True
+@@ -60,6 +67,7 @@ def is_internal_package(package_name: str) -> bool:
+ def parse_package_json(file_path: Path) -> List[Dict[str, str]]:
+     """
+     Parse package.json and extract dependencies with their sources.
++    Returns warnings for internal packages without registry specification.
+     """
      issues = []
-@@ -52,7 +105,7 @@ def analyze_package_json(filepath):
-         with open(filepath, 'r') as f:
-             data = json.load(f)
-     except Exception as e:
--        return [{'error': f'Failed to parse {filepath}: {e}'}]
-+        return [{'error': f'Failed to parse {filepath}: {e}', 'severity': 'info'}]
- 
-     # Check dependencies
-     dep_sections = ['dependencies', 'devDependencies', 'peerDependencies']
-@@ -62,14 +115,22 @@ def analyze_package_json(filepath):
-             for package, version in deps.items():
-                 # Check if version uses exact pinning or ranges
-                 is_pinned = re.match(r'^\d+\.\d+\.\d+$', version) is not None
--                
-+
-                 issues.append({
-                     'file': filepath,
-                     'package': package,
-                     'version': version,
-                     'is_pinned': is_pinned,
--                    'risk': 'low' if is_pinned else 'medium'
-+                    'risk': 'low' if is_pinned else 'medium',
-+                    'mitigation': [
-+                        'Use exact version pinning (e.g., "1.2.3" instead of "^1.2.3")',
-+                        'Use package-lock.json or yarn.lock with integrity hashes',
-+                        'Configure .npmrc to use private registry for internal packages',
-+                        'Use npm audit or snyk to detect malicious packages',
-+                        'Consider using npm scopes (@company/package) with registry mapping'
-+                    ],
-+                    'registry_check': 'performed',
-+                    'scope_recommended': True
-                 })
- 
-     return issues
-@@ -81,7 +142,7 @@ def analyze_requirements_txt(filepath):
-         with open(filepath, 'r') as f:
-             lines = f.readlines()
-     except Exception as e:
--        return [{'error': f'Failed to read {filepath}: {e}'}]
-+        return [{'error': f'Failed to read {filepath}: {e}', 'severity': 'info'}]
- 
-     for line in lines:
-         line = line.strip()
-@@ -91,7 +152,7 @@ def analyze_requirements_txt(filepath):
-         # Parse package specification
-         match = re.match(r'^([a-zA-Z0-9_-]+)\s*(.*)$', line)
-         if match:
--            package = match.group(1)
-+            package = match.group(1).lower()  # Normalize to lowercase
-             spec = match.group(2).strip()
- 
-             # Check if version is pinned
-@@ -100,7 +161,15 @@ def analyze_requirements_txt(filepath):
-             issues.append({
-                 'file': filepath,
-                 'package': package,
--                'is_pinned': is_pinned
-+                'is_pinned': is_pinned,
-+                'mitigation': [
-+                    'Pin exact versions in requirements.txt (e.g., package==1.2.3)',
-+                    'Use requirements.txt with hashes (pip install --require-hashes
+     try:
+@@ -71,6 +79,7 @@ def parse_package_json(file_path: Path) -> List[Dict[str, str]]:
+         for dep_type in ["dependencies", "devDependencies", "peerDependencies"]:
+             if dep_type not in data:
+                 continue
++            # Check each dependency for internal packages without registry lock
+             for package, version in data[dep_type].items():
+                 if is_internal_package(package):
+                     issues.append({
+@@ -85,6 +94,7 @@ def parse_package_json(file_path: Path) -> List[Dict[str, str]]:
+ def parse_requirements_txt(file_path: Path) -> List[Dict[str, str]]:
+     """
+     Parse requirements.txt and extract packages information.
++    Checks for internal packages names that could be confused with public packages.
+     """
+     issues = []
+     try:
+@@ -94,6 +104,7 @@ def parse_requirements_txt(file_path: Path) -> List[Dict[str, str]]:
+             for line in f:
+                 line = line.strip()
+                 if not line or line.startswith("#"):
++                    # Skip comments and empty lines
+                     continue
+                 # Extract package name (remove version specifiers)
+                 package_name = re.split(r'[<>!=~;]', line)[0].strip()
+@@ -108,6 +119,7 @@ def parse_requirements_txt(file_path: Path) -> List[Dict[str, str]]:
+ def check_npmrc_configuration(project_path: Path) -> List[Dict[str, str]]:
+     """
+     Check if .npmrc has proper registry configuration for internal scopes.
++    Ensures internal scopes are locked to private registry.
+     """
+     issues = []
+     npmrc_path = project_path / ".npmrc"
+@@ -118,6 +130,7 @@ def check_npmrc_configuration(project_path: Path) -> List[Dict[str, str]]:
+     try:
+         with open(npmrc_path, 'r') as f:
+             content = f.read()
++            # Verify all internal scopes are configured to use private registry
+             for scope in INTERNAL_SCOPES:
+                 registry_pattern = f"{scope}:registry={PRIVATE_REGISTRY_URL}"
+                 if registry_pattern not in content:
+@@ -133,6 +146,7 @@ def check_npmrc_configuration(project_path: Path) -> List[Dict[str, str]]:
+ def check_pip_conf_configuration(project_path: Path) -> List[Dict[str, str]]:
+     """
+     Check if pip.conf has proper index configuration.
++    Ensures internal packages are fetched from private index.
+     """
+     issues = []
+     pip_conf_paths = [
+@@ -147,6 +161,7 @@ def check_pip_conf_configuration(project_path: Path) -> List[Dict[str, str]]:
+         try:
+             with open(pip_conf_path, 'r') as f:
+                 content = f.read()
++                # Check for private index URL configuration
+                 if "extra-index-url" in content and PRIVATE_REGISTRY_URL not in content:
+                     issues.append({
+                         "file": str(pip_conf_path),
+@@ -160,6 +175,7 @@ def check_pip_conf_configuration(project_path: Path) -> List[Dict[str, str]]:
+ def generate_secure_npmrc(project_path: Path) -> None:
+     """
+     Generate a secure .npmrc file that prevents dependency confusion.
++    Locks internal scopes to private registry and sets default to public.
+     """
+     npmrc_path = project_path / ".npmrc"
+     if npmrc_path.exists():
+@@ -167,6 +183,7 @@ def generate_secure_npmrc(project_path: Path) -> None:
+     
+     with open(npmrc_path, 'w') as f:
+         f.write("# Auto-generated secure .npmrc - prevents dependency confusion\n")
++        # Lock each internal scope to private registry
+         for scope in INTERNAL_SCOPES:
+             f.write(f"{scope}:registry={PRIVATE_REGISTRY_URL}\n")
+         f.write(f"registry={PUBLIC_REGISTRY_URL}\n")
+@@ -176,6 +193,7 @@ def generate_secure_npmrc(project_path: Path) -> None:
+ def generate_secure_pip_conf(project_path: Path) -> None:
+     """
+     Generate a secure pip.conf file that prevents dependency confusion.
++    Configures pip to use private index for internal packages.
+     """
+     pip_dir = project_path / ".pip"
+     pip_dir.mkdir(exist_ok=True)
+@@ -184,6 +202,7 @@ def generate_secure_pip_conf(project_path: Path) -> None:
+     with open(pip_conf_path, 'w') as f:
+         f.write("[global]\n")
+         f.write("index-url = https://pypi.org/simple\n")
++        # Use extra-index-url carefully - order matters for security
+         f.write(f"extra-index-url = {PRIVATE_REGISTRY_URL}\n")
+         f.write("\n[install]\n")
+         f.write("trusted-host = pypi.org\n")
+@@ -192,6 +211,7 @@ def generate_secure_pip_conf(project_path: Path) -> None:
+ def scan_project(project_path: Path) -> Dict[str, any]:
+     """
+     Scan a project for dependency confusion vulnerabilities.
++    Returns detailed report of all found issues.
+    
