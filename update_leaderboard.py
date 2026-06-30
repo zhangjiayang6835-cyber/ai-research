@@ -1,15 +1,15 @@
-import urllib.request, json, sys, io, ssl
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-ctx = ssl.create_default_context()
-h = {"Authorization": "token os.environ["GH_TOKEN"]", "User-Agent": "updater"}
+import yaml, yaml.constructor
+import os
+import sys
 
-tasks = [
-    (5,"SQL注入","medium"),(6,"命令注入","medium"),(7,"XSS","medium"),(8,"SSRF","medium"),
-    (9,"反序列化","hard"),(10,"路径遍历","medium"),
-    (12,"IDOR","medium"),(13,"SSTI","medium"),(14,"XXE","hard"),
-    (15,"Open Redirect","easy"),(16,"Race Condition","hard"),
-    (17,"CSRF","medium"),(18,"JWT None Algorithm","medium"),(19,"Insecure File Upload","medium"),
-    (20,"NoSQL Injection","medium"),(21,"Hardcoded Credentials","easy"),
+
+    if not os.path.exists(path):
+        print(f"File not found: {path}")
+        return None
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+# ... rest of update_leaderboard.py ...
     (22,"Prototype Pollution","hard"),(23,"Mass Assignment","medium"),
     (24,"Negative Number Attack","medium"),(25,"Insecure Password Reset","medium"),
     (26,"LDAP Injection","medium"),(27,"Session Fixation","medium"),(28,"HTTP Request Smuggling","hard")
