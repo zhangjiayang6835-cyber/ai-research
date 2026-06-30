@@ -1,15 +1,15 @@
-import urllib.request, json, sys, io, ssl
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-ctx = ssl.create_default_context()
-h = {"Authorization": "token os.environ["GH_TOKEN"]", "User-Agent": "checker"}
+import yaml, yaml.constructor
+import os
+import sys
+
 for i in [17,18,19,20,21,22,23,24,25,26,27,28]:
-    try:
-        req = urllib.request.Request(f"https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}", headers=h)
-        with urllib.request.urlopen(req, timeout=15, context=ctx) as r:
-            d = json.loads(r.read())
-        print(f"=== #{i} ===")
-        print(f"  Title: {d['title'][:100]}")
-        print(f"  State: {d['state']}")
+    if not os.path.exists(filepath):
+        print(f"File not found: {filepath}")
+        return None
+    return yaml.safe_load(open(filepath, 'r'))
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
     except Exception as e:
         print(f"=== #{i} === ERROR: {e}")
     print()
