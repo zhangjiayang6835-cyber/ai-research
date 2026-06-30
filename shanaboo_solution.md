@@ -1,179 +1,167 @@
  ```diff
 --- a/eval-engine
 +++ b/eval-engine
-@@ -0,0 +1,0 @@
---- a/eval-engine/sandbox/wasm_executor.py
-+++ b/eval-engine/sandbox/wasm_executor.py
-@@ -0,0 +1,0 @@
-+import ctypes
-+import mmap
+@@ -1 +1,200 @@
++#!/usr/bin/env python3
++"""
++WebAssembly Memory Corruption Sandbox Escape Fix
++
++This module provides a secure WebAssembly execution environment that prevents
++memory corruption and sandbox escape vulnerabilities.
++"""
++
 +import os
++import sys
 +import struct
-+import tempfile
++import mmap
++import ctypes
++from typing import Optional, List, Tuple, Dict, Any
++from dataclasses import dataclass
++from enum import Enum, auto
 +
 +
-+class WasmMemory:
-+    """Secure WebAssembly memory implementation with bounds checking."""
-+    
-+    def __init__(self, initial_pages=1, max_pages=65536):
-+        self.page_size = 64 * 1024  # 64 KiB per page
-+        self.initial_pages = initial_pages
-+        self.max_pages = max_pages
-+        self.current_pages = initial_pages
-+        self._memory = None
-+        self._buffer = None
-+        self._mmap_obj = None
-+        self._fd = None
-+        self._init_memory()
-+    
-+    def _init_memory(self):
-+        """Initialize secure memory with guard pages and bounds checking."""
-+        # Calculate sizes with guard pages
-+        alloc_size = self.max_pages * self.page_size
-+        guard_size = self.page_size  # Guard page for overflow detection
-+        
-+        # Create anonymous mmap with guard pages
-+        # PROT_NONE guard pages at the end to catch overflow
-+        total_size = alloc_size + (guard_size * 2)
-+        
-+        # Use mmap with proper protection
-+        self._mmap_obj = mmap.mmap(
-+            -1,
-+            total_size,
-+            access=mmap.ACCESS_NONE
-+        )
-+        
-+        # Set up accessible region
-+        self._mmap_obj.mprotect(
-+            guard_size,
-+            alloc_size,
-+            mmap.PROT_READ | mmap.PROT_WRITE
-+        )
-+        
-+        # Create buffer view with bounds checking
-+        self._buffer = memoryview(self._mmap_obj)[guard_size:guard_size + alloc_size]
-+        self._memory = ctypes.cast(
-+            ctypes.c_void_p(id(self._buffer) + ctypes.sizeof(ctypes.c_void_p)),
-+            ctypes.POINTER(ctypes.c_ubyte)
-+        )
-+    
-+    def read(self, addr, size):
-+        """Read memory with strict bounds checking."""
-+        if not self._check_bounds(addr, size):
-+            raise WasmMemoryError(f"Memory access out of bounds: addr={addr}, size={size}")
-+        return bytes(self._buffer[addr:addr + size])
-+    
-+    def write(self, addr, data):
-+        """Write memory with strict bounds checking."""
-+        size = len(data)
-+        if not self._check_bounds(addr, size):
-+            raise WasmMemoryError(f"Memory access out of bounds: addr={addr}, size={size}")
-+        self._buffer[addr:addr + size] = data
-+    
-+    def _check_bounds(self, addr, size):
-+        """Check if memory access is within valid bounds."""
-+        if addr < 0 or size < 0:
-+            return False
-+        end = addr + size
-+        if end > self.current_pages * self.page_size:
-+            return False
-+        # Additional check for integer overflow
-+        if end < addr:  # Overflow check
-+            return False
-+        return True
-+    
-+    def grow(self, delta_pages):
-+        """Grow memory with validation."""
-+        if delta_pages < 0:
-+            raise WasmMemoryError("Cannot grow by negative pages")
-+        
-+        new_pages = self.current_pages + delta_pages
-+        if new_pages > self.max_pages:
-+            raise WasmMemoryError(f"Memory grow exceeds max: {new_pages} > {self.max_pages}")
-+        
-+        # Check for integer overflow
-+        if new_pages < self.current_pages:
-+            raise WasmMemoryError("Integer overflow in memory grow")
-+        
-+        self.current_pages = new_pages
-+        return self.current_pages
-+    
-+    def __del__(self):
-+        """Clean up memory resources."""
-+        if self._mmap_obj:
-+            self._mmap_obj.close()
-+        if self._fd:
-+            os.close(self._fd)
-+
-+
-+class WasmMemoryError(Exception):
-+    """Exception for WebAssembly memory errors."""
++class MemoryProtectionError(Exception):
++    """Raised when a memory protection violation is detected."""
 +    pass
 +
 +
-+class WasmSandbox:
-+    """Secure WebAssembly sandbox with memory isolation."""
++class SandboxEscapeError(Exception):
++    """Raised when sandbox escape attempt is detected."""
++    pass
++
++
++class MemoryRegionType(Enum):
++    """Types of memory regions with different protection levels."""
++    CODE = auto()      # Executable code (read-only after load)
++    DATA = auto()      # Mutable data (read-write, no execute)
++    STACK = auto()     # Stack (read-write, bounds checked)
++    HEAP = auto()      # Heap (read-write, bounds checked)
++    GUARD = auto()     # Guard page (no access)
++
++
++@dataclass(frozen=True)
++class MemoryRegion:
++    """Represents a protected memory region."""
++    start: int
++    size: int
++    region_type: MemoryRegionType
++    permissions: int  # mmap.PROT_*
 +    
-+    def __init__(self, max_memory_mb=512):
-+        self.max_memory_mb = max_memory_mb
-+        self.memory = None
-+        self._imports = {}
-+        self._setup_sandbox()
++    @property
++    def end(self) -> int:
++        return self.start + self.size
 +    
-+    def _setup_sandbox(self):
-+        """Set up sandbox environment with restricted capabilities."""
-+        # Limit resource usage
-+        import resource
-+        max_bytes = self.max_memory_mb * 1024 * 1024
-+        resource.setrlimit(resource.RLIMIT_AS, (max_bytes, max_bytes))
-+        resource.setrlimit(resource.RLIMIT_DATA, (max_bytes, max_bytes))
++    def contains(self, addr: int, size: int = 1) -> bool:
++        """Check if address range is within this region."""
++        return self.start <= addr and addr + size <= self.end
++
++
++class SecureMemoryManager:
++    """
++    Secure memory manager with protection against memory corruption.
 +    
-+    def load_module(self, wasm_bytes):
-+        """Load a WebAssembly module with validation."""
-+        # Validate WASM magic and version
-+        if len(wasm_bytes)粟8:
-+            raise WasmValidationError("WASM module too small")
++    Features:
++    - Guard pages around sensitive regions
++    - Strict bounds checking on all memory accesses
++    - Separation of code and data (W^X policy)
++    - Canary values for stack protection
++    """
++    
++    PAGE_SIZE = 4096
++    GUARD_PAGE_COUNT = 1  # Number of guard pages
++    STACK_CANARY = 0xDEADBEEFCAFEBABE
++    MAX_MEMORY_SIZE = 2 ** 32  # 4GB max for 32-bit WASM
++    
++    def __init__(self, memory_size: int = 16 * 1024 * 1024,  # 16MB default
++                 stack_size: int = 1024 * 1024,  # 1MB stack
++                 enable_guard_pages: bool = True):
++        self._memory_size = self._align_up(memory_size)
++        self._stack_size = self._align_up(stack_size)
++        self._enable_guard_pages = enable_guard_pages
 +        
-+        magic = wasm_bytes[:4]
-+        if magic != b'\x00asm':
-+            raise WasmValidationError("Invalid WASM magic number")
++        # Track allocated regions
++        self._regions: List[MemoryRegion] = []
++        self._memory: Optional[mmap.mmap] = None
++        self._base_addr: int = 0
 +        
-+        version = struct.unpack('<I', wasm_bytes[4:8])[0]
-+        if version != 1:
-+            raise WasmValidationError(f"Unsupported WASM version: {version}")
++        # Stack tracking
++        self._stack_top: int = 0
++        self._stack_canary_locations: Dict[int, int] = {}
 +        
-+        # Parse and validate memory section
-+        self._validate_memory_section(wasm_bytes)
-+        
-+        return self
++        # Initialize memory
++        self._initialize_memory()
 +    
-+    def _validate_memory_section(self, wasm_bytes):
-+        """Validate memory section limits."""
-+        # Simplified validation - in production, use proper WASM parser
-+        # This prevents memory limit attacks
-+        pass
++    def _align_up(self, size: int, alignment: int = PAGE_SIZE) -> int:
++        """Align size up to page boundary."""
++        return (size + alignment - 1) & ~(alignment - 1)
 +    
-+    def instantiate(self, imports=None):
-+        """Instantiate module with secure imports."""
-+        if imports:
-+            self._validate_imports(imports)
-+            self._imports = imports
++    def _initialize_memory(self) -> None:
++        """Initialize secure memory with guard pages."""
++        total_size = self._memory_size
++        guard_size = 0
 +        
-+        # Initialize secure memory
-+        self.memory = WasmMemory(initial_pages=1, max_pages=1024)
++        if self._enable_guard_pages:
++            guard_size = self.PAGE_SIZE * self.GUARD_PAGE_COUNT
++            total_size += guard_size * 2
 +        
-+        return self
++        # Create anonymous memory mapping
++        self._memory = mmap.mmap(
++            -1,
++            total_size,
++            prot=mmap.PROT_NONE,  # Start with no access
++            flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS
++        )
++        
++        self._base_addr = ctypes.c_void_p.from_buffer(self._memory).value
++        if self._base_addr is None:
++            raise MemoryProtectionError("Failed to get base address")
++        
++        # Set up main memory region (without guard pages)
++        memory_start = self._base_addr + guard_size if self._enable_guard_pages else self._base_addr
++        
++        # Make main memory readable and writable (but not executable)
++        main_prot = mmap.PROT_READ | mmap.PROT_WRITE
++        
++        # Use mprotect to set permissions on main region
++        self._mprotect(memory_start, self._memory_size, main_prot)
++        
++        # Add regions
++        self._regions.append(MemoryRegion(
++            memory_start,
++            self._memory_size,
++            MemoryRegionType.DATA,
++            main_prot
++        ))
++        
++        # Initialize stack at the top of memory (grows down)
++        self._stack_top = memory_start + self._memory_size
++        self._initialize_stack_canary()
 +    
-+    def _validate_imports(self, imports):
-+        """Validate and sanitize imported functions."""
-+        for name, func in imports.items():
-+            if callable(func):
-+                # Wrap function to prevent escape
-+                imports[name] = self._wrap_function(func, name)
++    def _mprotect(self, addr: int, size: int, prot: int) -> None:
++        """Wrapper for mprotect system call."""
++        try:
++            # Use ctypes to call mprotect
++            libc = ctypes.CDLL(None)
++            result = libc.mprotect(addr, size, prot)
++            if result != 0:
++                raise MemoryProtectionError(f"mprotect failed for address {addr:#x}")
++        except Exception as e:
++            raise MemoryProtectionError(f"Memory protection error: {e}")
 +    
-+    def _wrap_function(self, func, name):
-+        """Wrap imported function to prevent sandbox escape."""
-+        def wrapper(*args, **kwargs):
-+            # Prevent access to dangerous builtins
-+            import builtins
-+            if hasattr(builtins,
++    def _initialize_stack_canary(self) -> None:
++        """Initialize stack canary for overflow detection."""
++        canary_addr = self._stack_top - 8  # 64-bit canary
++        self._write_u64(canary_addr, self.STACK_CANARY)
++        self._stack_canary_locations[canary_addr] = self.STACK_CANARY
++    
++    def _check_canary(self) -> None:
++        """Verify stack canary hasn't been corrupted."""
++        for addr, expected in self._stack_canary_locations.items():
++            actual = self._read_u64(addr)
++            if actual != expected:
++                raise MemoryProtectionError(
++                    f"Stack canary corrupted at {addr:#x}: "
++                    f"expected {expected:#x}, got {actual:#x}"
++                )
++    
++    def _validate_address(self, addr: int, size: int
