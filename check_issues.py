@@ -1,15 +1,15 @@
-import urllib.request, json, sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import yaml, yaml.constructor
+import os
+import sys
 
-token = os.environ["GH_TOKEN"]
 headers = {'Authorization': f'token {token}', 'User-Agent': 'monitor-agent'}
+    if not os.path.exists(filepath):
+        print(f"File not found: {filepath}")
+        return None
+    return yaml.safe_load(open(filepath, 'r'))
 
-def get_json(url):
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req) as r:
-        return json.loads(r.read())
-
-for i in range(5, 11):
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
     comments = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}/comments')
     issue = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}')
     title = issue['title'].replace('\U0001f41b', '[bug]').replace('\U0001f4b0', '[money]')
