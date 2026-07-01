@@ -1,0 +1,10 @@
+{
+  "name": "ai-research-harness",
+  "private": true,
+  "scripts": {
+    "type-check": "python3 -m py_compile sso_federation.py tests/test_sso_federation.py src/security/request_sanitizer.py",
+    "test": "python3 -m pytest tests -q",
+    "lint": "python3 -m py_compile sso_federation.py tests/test_sso_federation.py src/security/request_sanitizer.py",
+    "build": "python3 -m compileall -q sso_federation.py tests src"
+  }
+}
