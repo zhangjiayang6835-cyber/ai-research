@@ -1,177 +1,198 @@
  ```diff
---- a/honeycode-honeypot/app.py
-+++ b/honeycode-honeypot/app.py
-@@ -1,6 +1,7 @@
- from flask import Flask, request, render_template_string, redirect, url_for, flash, session
- from functools import wraps
- import sqlite3
-+import html
- 
- app = Flask(__name__)
- app.secret_key = 'dev-secret-key-change-in-production'
-@@ -45,7 +46,7 @@
-     <div class="container">
-         <h1>AI Research Platform - Honeypot</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <div class="task-list">
-@@ -88,7 +89,7 @@
-     <div class="container">
-         <h1>Submit Your Solution</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST" action="/submit">
-@@ -140,7 +141,7 @@
-     <div class="container">
-         <h1>Task Details</h1>
-         <h2>{{ task.title }}</h2>
--        <p>{{ task.description }}</p>
-+        <p>{{ task.description | e }}</p>
-         
-         <h3>Submissions</h3>
-         <table>
-@@ -152,7 +153,7 @@
-             {% for sub in submissions %}
-             <tr>
-                 <td>{{ sub.username }}</td>
--                <td><pre>{{ sub.code }}</pre></td>
-+                <td><pre>{{ sub.code | e }}</pre></td>
-                 <td>{{ sub.score }}</td>
-             </tr>
-             {% endfor %}
-@@ -178,7 +179,7 @@
-     <div class="container">
-         <h1>Register</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -209,7 +210,7 @@
-     <div class="container">
-         <h1>Login</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -244,7 +245,7 @@
-     <div class="container">
-         <h1>Profile</h1>
-         <p>Username: {{ user.username }}</p>
--        <p>Bio: {{ user.bio }}</p>
-+        <p>Bio: {{ user.bio | e }}</p>
-         
-         <h3>My Submissions</h3>
-         <table>
-@@ -256,7 +257,7 @@
-             {% for sub in submissions %}
-             <tr>
-                 <td>{{ sub.task_title }}</td>
--                <td><pre>{{ sub.code }}</pre></td>
-+                <td><pre>{{ sub.code | e }}</pre></td>
-                 <td>{{ sub.score }}</td>
-             </tr>
-             {% endfor %}
-@@ -283,7 +284,7 @@
-     <div class="container">
-         <h1>Edit Profile</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -316,7 +317,7 @@
-     <div class="container">
-         <h1>Leaderboard</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <table>
-@@ -328,7 +329,7 @@
-             {% for entry in entries %}
-             <tr>
-                 <td>{{ entry.rank }}</td>
--                <td>{{ entry.username }}</td>
-+                <td>{{ entry.username | e }}</td>
-                 <td>{{ entry.total_score }}</td>
-             </tr>
-             {% endfor %}
-@@ -353,7 +354,7 @@
-     <div class="container">
-         <h1>Admin Panel</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <h3>All Submissions</h3>
-@@ -368,9 +369,9 @@
-             {% for sub in submissions %}
-             <tr>
-                 <td>{{ sub.id }}</td>
--                <td>{{ sub.username }}</td>
-+                <td>{{ sub.username | e }}</td>
-                 <td>{{ sub.task_id }}</td>
--                <td><pre>{{ sub.code }}</pre></td>
-+                <td><pre>{{ sub.code | e }}</pre></td>
-                 <td>{{ sub.score }}</td>
-                 <td>
-                     <form method="POST" action="/admin/delete/{{ sub.id }}">
-@@ -399,7 +400,7 @@
-     <div class="container">
-         <h1>Search Results</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="GET" action="/search">
-@@ -415,9 +416,9 @@
-             </tr>
-             {% for result in results %}
-             <tr>
--                <td>{{ result.username }}</td>
--                <td>{{ result.task_title }}</td>
--                <td><pre>{{ result.code }}</pre></td>
-+                <td>{{ result.username | e }}</td>
-+                <td>{{ result.task_title | e }}</td>
-+                <td><pre>{{ result.code | e }}</pre></td>
-             </tr>
-             {% endfor %}
-         </table>
-@@ -444,7 +445,7 @@
-     <div class="container">
-         <h1>API Documentation</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <h2>Endpoints</h2>
-@@ -472,7 +473,7 @@
-     <div class="container">
-         <h1>Contact</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -501,6 +502,12 @@
- def login_required(f):
-     @wraps(f)
-     def decorated_function(*args, **kwargs):
-+        # Validate session to prevent session fixation
-+        if
+--- a/honeycode-honeypot
++++ b/honeycode-honeypot
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/eval-engine
++++ b/eval-engine
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/ai-training-gym
++++ b/ai-training-gym
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/check_issue29.py
++++ b/check_issue29.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/check_issues.py
++++ b/check_issues.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/check_new.py
++++ b/check_new.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/check_new2.py
++++ b/check_new2.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/leaderboard.py
++++ b/leaderboard.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/monitor.py
++++ b/monitor.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/notify_email.py
++++ b/notify_email.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/update_leaderboard.py
++++ b/update_leaderboard.py
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/training_data.jsonl
++++ b/training_data.jsonl
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/.gitignore
++++ b/.gitignore
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/.gitmodules
++++ b/.gitmodules
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/LICENSE
++++ b/LICENSE
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/scripts
++++ b/scripts
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/tests
++++ b/tests
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/promotion
++++ b/promotion
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/docs
++++ b/docs
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/.github
++++ b/.github
+@@ -0,0 +1,1 @@
++ 
+\ No newline at end of file
+--- a/honeycode-honeypot/utils/archive_handler.py
++++ b/honeycode-honeypot/utils/archive_handler.py
+@@ -0,0 +1,85 retrieve,59 @@
++import os
++import zipfile
++import tarfile
++import logging
++
++logger = logging.getLogger(__name__)
++
++
++def _is_safe_path(base_dir, target_path):
++    """
++    Validate that the target path does not escape the base directory.
++    Prevents directory traversal attacks.
++    """
++    # Resolve to absolute real paths to handle symlinks and relative components
++    base_dir = os.path.realpath(os.path.abspath(base_dir))
++    target_path = os.path.realpath(os.path.abspath(target_path))
++    return target_path.startswith(base_dir + os.sep) or target_path == base_dir
++
++
++def _sanitize_filename(filename):
++    """
++    Remove any path components from a filename, keeping only the basename.
++    """
++    return os.path.basename(filename)
++
++
++def extract_zip(zip_path, extract_to):
++    """
++    Safely extract a ZIP archive, preventing Zip Slip attacks.
++    """
++    with zipfile.ZipFile(zip_path, 'r') as zf:
++        for member in zf.namelist():
++            # Reject absolute paths and paths with parent directory references
++            if member.startswith('/') or '..' in member:
++                logger.warning(f"Skipping dangerous path in zip: {member}")
++                continue
++            
++            # Calculate the intended extraction path
++            target_path = os.path.join(extract_to, member)
++            
++            # Validate the path doesn't escape the extraction directory
++            if not _is_safe_path(extract_to, target_path):
++                logger.warning(f"Skipping zip slip attempt: {member}")
++                continue
++            
++            # Extract the individual member
++            zf.extract(member, extract_to)
++
++
++def extract_tar(tar_path, extract_to):
++    """
++    Safely extract a TAR archive, preventing Tar Slip attacks.
++    """
++    with tarfile.open(tar_path, 'r:*') as tf:
++        for member in tf.getmembers():
++            # Reject absolute paths and paths with parent directory references
++            if member.name.startswith('/') or '..' in member.name:
++                logger.warning(f"Skipping dangerous path in tar: {member.name}")
++                continue
++            
++            # Calculate the intended extraction path
++            target_path = os.path.join(extract_to, member.name)
++            
++            # Validate the path doesn't escape the extraction directory
++            if not _is_safe_path(extract_to, target_path):
++                logger.warning(f"Skipping tar slip attempt: {member.name}")
++                continue
++            
++            # Extract the individual member
++            tf.extract(member, extract_to)
++
++
++def extract_archive(archive_path, extract_to):
++    """
++    Safely extract an archive (zip or tar), preventing path traversal attacks.
++    """
++    if not os.path.exists(extract_to):
++        os.makedirs(extract_to)
++    
++    if zipfile.is_zipfile(archive_path):
++        extract_zip(archive_path, extract_to)
++    elif tarfile.is_tarfile(archive_path):
++        extract_tar(archive_path, extract_to)
++    else:
++        raise ValueError(f"Unsupported archive format: {archive_path}")
+--- a/honeycode-honeypot/utils/__init__.py
++++ b/honeycode-honeypot/utils/__init__.py
+@@ -0,0 +1,5 @@
++from .archive_handler import extract_archive, extract_zip, extract_tar
++
++
++__all__ = ['extract_archive', 'extract_zip', 'extract_tar']
+--- a/honeycode-honeypot/routes/upload.py
++++ b/honey
