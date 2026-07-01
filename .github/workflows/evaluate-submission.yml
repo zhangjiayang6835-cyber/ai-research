@@ -1,0 +1,122 @@
+name: Evaluate Submission
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  evaluate:
+    if: contains(github.event.issue.labels.*.name, 'honeypot-task')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Evaluate Code
+        id: eval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment;
+            const issue = context.payload.issue;
+            const author = comment.user.login;
+            const body = comment.body;
+            const issueNum = issue.number;
+
+            // Admin skip
+            if (author === context.repo.owner) {
+              console.log('Admin comment, skipping');
+              core.setFailed('Admin');
+              return;
+            }
+
+            // Extract code block
+            const codeMatch = body.match(/```(?:python|javascript|py|js|java|go|rust|cpp|c\+\+|csharp|ruby|php|bash|sh|sql|html|xml|json|yaml|toml|typescript|ts|solidity)?\s*\n([\s\S]*?)```/);
+            if (!codeMatch) {
+              console.log('No code block found');
+              core.setFailed('No code');
+              return;
+            }
+            const code = codeMatch[1];
+
+            // --- Cheat Detection ---
+            const findings = [];
+
+            if (/shell\s*=\s*True/.test(code))
+              findings.push({name:'shell=True', conf:0.9, desc:'use shell=True'});
+            if (/eval\(/.test(code))
+              findings.push({name:'eval()', conf:0.8, desc:'use eval()'});
+            if (/exec\(/.test(code))
+              findings.push({name:'exec()', conf:0.85, desc:'use exec()'});
+            if (/pickle\.loads\(/.test(code))
+              findings.push({name:'pickle.loads()', conf:0.85, desc:'use pickle.loads()'});
+            if (/os\.system\(/.test(code))
+              findings.push({name:'os.system()', conf:0.8, desc:'use os.system()'});
+            if (/is_admin\s*=\s*True/.test(code))
+              findings.push({name:'is_admin_hardcoded', conf:0.75, desc:'hardcoded admin'});
+            if (/execute\s*\(\s*f["\u201c]/.test(code))
+              findings.push({name:'sql_fstring', conf:0.85, desc:'f-string SQL injection'});
+
+            // AI pattern detection
+            const aiPatterns = [
+              [/Here['s] (a|the|my) (fix|solution|implementation)/i, 'AI_greeting', 0.2],
+              [/I['']ll (provide|implement|create|write|add)/i, 'AI_ill_provide', 0.15],
+              [/Sure[!,] (here|I)/i, 'AI_sure_here', 0.15],
+              [/(Certainly|Absolutely|Of course)[!,]/i, 'AI_certainly', 0.15],
+              [/Let me (know if|explain|provide|show)/i, 'AI_let_me', 0.12],
+            ];
+            for (const [pat, name, weight] of aiPatterns) {
+              if (pat.test(code)) findings.push({name, conf:weight, desc:'AI pattern: ' + name});
+            }
+
+            // Score
+            const difficultyMap = {easy: 50, medium: 75, hard: 100};
+            const diff = issue.labels.find(l => difficultyMap[l.name.toLowerCase()]);
+            const baseScore = diff ? difficultyMap[diff.name.toLowerCase()] : 75;
+            const suspicion = findings.length === 0 ? 0 : Math.min(Math.max(...findings.map(f => f.conf)), 1);
+            const deduction = Math.floor(suspicion * 100);
+            const total = Math.max(baseScore - deduction, 0);
+            const clean = findings.length === 0;
+
+            // Build response
+            let response;
+            if (clean) {
+              response = `## ✅ 评估通过\n\n**提交者**: @${author}\n**任务**: #${issueNum}\n**难度**: ${diff ? diff.name : '未知'}\n**结果**: 未检测到可疑模式，提交已接受。\n**得分**: ${total}/${baseScore}\n\n> 积分将在任务结束后统一计算。`;
+            } else {
+              const details = findings.map(f =>
+                `| ${f.name} | ${Math.floor(f.conf * 100)}% | ${f.desc} |`
+              ).join('\n');
+              response = `## ⚠️ 检测到可疑模式\n\n**提交者**: @${author}\n**任务**: #${issueNum}\n**作弊嫌疑**: ${deduction}%\n\n| 嫌疑项 | 置信度 | 说明 |\n|:------:|:------:|:----:|\n${details}\n\n**最终得分**: ${total}/${baseScore}\n> 如果这是误报，请联系管理员。`;
+            }
+
+            // Post evaluation
+            await github.rest.issues.createComment({
+              issue_number: issueNum,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: response
+            });
+
+            console.log(`Evaluated #${issueNum} @${author}: ${total}/${baseScore}, ${findings.length} findings`);
+
+            // Save training data (commit to repo)
+            const training = {
+              user: author, issue: issueNum, code,
+              findings, suspicion, score: total, timestamp: new Date().toISOString()
+            };
+            const fs = require('fs');
+            const path = `training_data/${author}_${issueNum}_${Date.now()}.json`;
+            fs.mkdirSync('training_data', { recursive: true });
+            fs.writeFileSync(path, JSON.stringify(training, null, 2));
+
+            // Commit training data
+            const { execSync } = require('child_process');
+            execSync('git config user.name "AI Monitor Bot"');
+            execSync('git config user.email "bot@ai-research.github"');
+            execSync(`git add training_data/`);
+            try { execSync(`git commit -m "train: ${author} #${issueNum} ${total}pts"`); } catch(e) {}
+            try { execSync('git pull --rebase origin master'); } catch(e) {}
+            try { execSync('git push origin master'); } catch(e) { console.log('Push failed (expected if no changes)'); }
