@@ -90,7 +90,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           BRANCH="${{ steps.check.outputs.head_ref }}"
-          git push origin HEAD:$BRANCH --force 2>&1 || echo "Push failed"
+          git push origin HEAD:refs/heads/$BRANCH --force 2>&1 || echo "Push failed"
 
       - name: Remove auto-rebase label
         if: steps.check.outputs.skip != 'true'
@@ -106,7 +106,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
-          gh pr merge $PR_NUM --repo ${{ github.repository }} --merge --subject "Auto-merge: fix #$PR_NUM" 2>&1 || gh pr merge $PR_NUM --repo ${{ github.repository }} --squash --subject "Auto-merge: fix #$PR_NUM" 2>&1 || echo "Merge not possible"
+          gh pr merge $PR_NUM --repo ${{ github.repository }} --squash --subject "Auto-merge fix #$PR_NUM" 2>&1 || echo "Merge not possible"
 
       - name: Success comment
         if: success() && steps.check.outputs.skip != 'true'
@@ -129,3 +129,4 @@ jobs:
               issue_number: prNum, owner: context.repo.owner, repo: context.repo.repo,
               body: "❌ Auto rebase failed, manual conflict resolution needed.\n\n> Virtual tokens for learning ranking only, not redeemable for cash or crypto."
             });
+
