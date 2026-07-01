@@ -1,4 +1,45 @@
-# Changelog\n\n## 2026-07-01\n\n### 🚀 新功能\n\n- feat: add auto-rebase-merge workflow for approved PRs\n\n### 🐛 Bug修复\n\n- fix: change undefined 'score' to 'totalScore' in PR review workflow\n- fix: apply solution for issue #140
+# Changelog\n\n## 2026-07-01\n\n### 🐛 Bug修复\n\n- fix: change undefined 'score' to 'totalScore' in PR review workflow\n- fix: apply solution for issue #140
+# Conflicts:
+#	check_issue29.py\n- fix: apply solution for issue #143
+# Conflicts:
+#	check_issue29.py\n- fix: apply solution for issue #38
+# Conflicts:
+#	check_issue29.py\n- fix: apply solution for issue #156
+# Conflicts:
+#	shanaboo_solution.md\n- fix: apply solution for issue #154
+# Conflicts:
+#	check_issue29.py\n- fix: prevent cross-tenant account takeover in SSO federation (closes #212)
+
+Implements strict tenant-scoped validation for federated SSO tokens:
+- Validates issuer (iss) to confirm token origin from the expected IdP
+- Validates audience (aud) to confirm intended recipient
+- CRITICAL: Validates tenant_id (tid) to prevent cross-tenant token reuse
+- Uses per-tenant public keys for signature verification
+- Prevents replay attacks via jti (JWT ID) tracking
+- Validates token expiry and freshness (iat/exp)
+
+The core fix ensures that a token issued for one tenant cannot be used
+to authenticate against another tenant, even when both tenants share
+the same identity provider.\n- fix: apply solution for issue #140
+# Conflicts:
+#	check_issue29.py\n- fix: add SHA param for BOT_STATUS.json\n- fix: add concurrency lock + direct merge fallback in auto-rebase workflow\n- fix: apply solution for issue #148
+# Conflicts:
+#	shanaboo_solution.md\n- fix: block serverless event injection privilege escalation (closes #155)
+
+Add event_policy.py with PRIVILEGED_EVENT_FIELDS to reject privileged
+fields (role, is_admin, permissions, etc.) from event body. Auth info
+is only extracted from trusted requestContext.authorizer.claims.
+
+ETHEREUM ADDRESS: 0x5e1040927a1E28D740f92De27a3d493b81682D88
+
+# Conflicts:
+#	event_policy.py\n- fix: [BUG] Remote Code Execution via Unsafe Pickle Deserialization $100
+
+To address the issue of Remote Code Execution via Unsafe Pickle Deserialization, we need to identify where in the codebase pickle deserialization is used and ensure it's done safely. However, given th
+
+# Conflicts:
+#	check_new2.py
+#	update_leaderboard.py\n- fix: use fully qualified ref in git push (refs/heads/)\n- fix: rewrite auto-rebase-merge with clean YAML\n- fix: update auto-rebase workflow with proper rebase logic + workflow_dispatch\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @AI Training Bot\n- @Yuganshconversely\n- @Clearview Geographic\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-01\n\n### 🚀 新功能\n\n- feat: add auto-rebase-merge workflow for approved PRs\n\n### 🐛 Bug修复\n\n- fix: change undefined 'score' to 'totalScore' in PR review workflow\n- fix: apply solution for issue #140
 # Conflicts:
 #	check_issue29.py\n- fix: apply solution for issue #143
 # Conflicts:
