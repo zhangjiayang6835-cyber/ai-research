@@ -79,8 +79,7 @@ jobs:
               }
             }
 
-            report += `\n---\n*🤖 Bounty 系统自动生成*\n
-> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。感谢贡献！🎉`;
+            report += `\n---\n*🤖 Bounty 系统自动生成*\n`;
 
             // Update the bounty leaderboard issue
             const { data: issues } = await github.rest.issues.listForRepo({
