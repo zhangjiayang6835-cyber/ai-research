@@ -163,9 +163,54 @@ jobs:
             report += `| 目标 Issue | #${targetIssue} |\n`;
             report += `| **代币奖励** | **$${totalScore}** |\n\n`;
 
-            report += `---\n*🤖 自动审查 by AI Training Bot*\n`;
+            report += `---\n*🤖 自动审查 by AI Training Bot\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。*\n`;
 
-            // Store results
+            
+            // 2. QUALITY MULTI-DIMENSION SCORING
+            let qualityScore = 100;
+            const qualityNotes = [];
+
+            const hasBody = (pr.body || "").length > 20;
+            if (!hasBody) { qualityScore -= 15; qualityNotes.push("缺少 PR 描述 (-15)"); }
+
+            const refIssue = (pr.body || "").match(/(?:fix(?:es)?|closes?|resolve|#)\\s*(\d+)/i) || (pr.title || "").match(/#\s*(\d+)/);
+            if (!refIssue) { qualityScore -= 10; qualityNotes.push("没有关联 Issue (-10)"); }
+
+            const hasTests = files.some(f => /test|spec|__tests__/i.test(f.filename));
+            if (!hasTests) { qualityScore -= 10; qualityNotes.push("没有测试文件 (-10)"); }
+
+            if (totalAdditions < 5) { qualityScore -= 20; qualityNotes.push("改动太少 (<5 行) (-20)"); }
+            else if (totalAdditions > 500) { qualityScore -= 10; qualityNotes.push("PR 过大 (>500 行) (-10)"); }
+
+            const meaningful = files.filter(f => !/\.(md|txt|json|yml|yaml|toml|cfg|ini)$/i.test(f.filename));
+            if (meaningful.length === 0 && files.length > 0) { qualityScore -= 10; qualityNotes.push("只有配置文件 (-10)"); }
+
+            if (qualityNotes.length > 0) {
+              report += "\n### 📋 代码质量\n\n| 检查项 | 扣分 |\n|:-----:|:----:|\n";
+              for (const n of qualityNotes) report += "| " + n.replace("(", "| (") + " |\n";
+              report += "| **总分** | **" + qualityScore + "/100** |\n\n";
+            } else {
+              report += "\n### 📋 代码质量\n\n✅ 全部通过 (100/100)\n\n";
+            }
+
+            const combinedScore = Math.round((score + qualityScore) / 2);
+            report += "**综合评分**: **" + combinedScore + "/100** (安全 " + score + " + 质量 " + qualityScore + ")\n\n";
+
+            if (score >= 80 && qualityScore >= 70 && !hasCheat) {
+              if (!labels.includes("auto-reviewed")) {
+                await github.rest.issues.addLabels({ issue_number: prNum, owner: context.repo.owner, repo: context.repo.repo, labels: ["auto-reviewed"] });
+              }
+              if (!labels.includes("approved") && combinedScore >= 75) {
+                await github.rest.issues.addLabels({ issue_number: prNum, owner: context.repo.owner, repo: context.repo.repo, labels: ["approved"] });
+              }
+              report += "\n✅ **自动审核通过** - 代码安全且质量达标\n";
+            } else if (hasCheat) {
+              report += "\n⛔ **检测到作弊行为** - 人工审核\n";
+            } else {
+              report += "\n🔍 **需要人工复核** - 安全评分 " + score + "/100，质量评分 " + qualityScore + "/100\n";
+            }
+
+// Store results
             core.setOutput('report', report);
             core.setOutput('score', totalScore.toString());
             core.setOutput('clean', clean.toString());
