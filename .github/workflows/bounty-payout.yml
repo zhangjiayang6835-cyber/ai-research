@@ -1,6 +1,8 @@
 name: Bounty Payout
 
 on:
+schedule:
+  - cron: '0 8 * * 0'   # UTC 08:00 every Sunday = Beijing 16:00
   workflow_dispatch:
     inputs:
       user:
