@@ -1,177 +1,144 @@
  ```diff
+--- a/honeycode-honeypot
++++ b/honeycode-honeypot
+@@ -0,0 +1,0 @@
 --- a/honeycode-honeypot/app.py
 +++ b/honeycode-honeypot/app.py
-@@ -1,6 +1,7 @@
- from flask import Flask, request, render_template_string, redirect, url_for, flash, session
- from functools import wraps
- import sqlite3
-+import html
- 
- app = Flask(__name__)
- app.secret_key = 'dev-secret-key-change-in-production'
-@@ -45,7 +46,7 @@
-     <div class="container">
-         <h1>AI Research Platform - Honeypot</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <div class="task-list">
-@@ -88,7 +89,7 @@
-     <div class="container">
-         <h1>Submit Your Solution</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST" action="/submit">
-@@ -140,7 +141,7 @@
-     <div class="container">
-         <h1>Task Details</h1>
-         <h2>{{ task.title }}</h2>
--        <p>{{ task.description }}</p>
-+        <p>{{ task.description | e }}</p>
-         
-         <h3>Submissions</h3>
-         <table>
-@@ -152,7 +153,7 @@
-             {% for sub in submissions %}
-             <tr>
-                 <td>{{ sub.username }}</td>
--                <td><pre>{{ sub.code }}</pre></td>
-+                <td><pre>{{ sub.code | e }}</pre></td>
-                 <td>{{ sub.score }}</td>
-             </tr>
-             {% endfor %}
-@@ -178,7 +179,7 @@
-     <div class="container">
-         <h1>Register</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -209,7 +210,7 @@
-     <div class="container">
-         <h1>Login</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -244,7 +245,7 @@
-     <div class="container">
-         <h1>Profile</h1>
-         <p>Username: {{ user.username }}</p>
--        <p>Bio: {{ user.bio }}</p>
-+        <p>Bio: {{ user.bio | e }}</p>
-         
-         <h3>My Submissions</h3>
-         <table>
-@@ -256,7 +257,7 @@
-             {% for sub in submissions %}
-             <tr>
-                 <td>{{ sub.task_title }}</td>
--                <td><pre>{{ sub.code }}</pre></td>
-+                <td><pre>{{ sub.code | e }}</pre></td>
-                 <td>{{ sub.score }}</td>
-             </tr>
-             {% endfor %}
-@@ -283,7 +284,7 @@
-     <div class="container">
-         <h1>Edit Profile</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -316,7 +317,7 @@
-     <div class="container">
-         <h1>Leaderboard</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <table>
-@@ -328,7 +329,7 @@
-             {% for entry in entries %}
-             <tr>
-                 <td>{{ entry.rank }}</td>
--                <td>{{ entry.username }}</td>
-+                <td>{{ entry.username | e }}</td>
-                 <td>{{ entry.total_score }}</td>
-             </tr>
-             {% endfor %}
-@@ -353,7 +354,7 @@
-     <div class="container">
-         <h1>Admin Panel</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <h3>All Submissions</h3>
-@@ -368,9 +369,9 @@
-             {% for sub in submissions %}
-             <tr>
-                 <td>{{ sub.id }}</td>
--                <td>{{ sub.username }}</td>
-+                <td>{{ sub.username | e }}</td>
-                 <td>{{ sub.task_id }}</td>
--                <td><pre>{{ sub.code }}</pre></td>
-+                <td><pre>{{ sub.code | e }}</pre></td>
-                 <td>{{ sub.score }}</td>
-                 <td>
-                     <form method="POST" action="/admin/delete/{{ sub.id }}">
-@@ -399,7 +400,7 @@
-     <div class="container">
-         <h1>Search Results</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="GET" action="/search">
-@@ -415,9 +416,9 @@
-             </tr>
-             {% for result in results %}
-             <tr>
--                <td>{{ result.username }}</td>
--                <td>{{ result.task_title }}</td>
--                <td><pre>{{ result.code }}</pre></td>
-+                <td>{{ result.username | e }}</td>
-+                <td>{{ result.task_title | e }}</td>
-+                <td><pre>{{ result.code | e }}</pre></td>
-             </tr>
-             {% endfor %}
-         </table>
-@@ -444,7 +445,7 @@
-     <div class="container">
-         <h1>API Documentation</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <h2>Endpoints</h2>
-@@ -472,7 +473,7 @@
-     <div class="container">
-         <h1>Contact</h1>
-         {% if message %}
--        <div class="alert">{{ message }}</div>
-+        <div class="alert">{{ message | e }}</div>
-         {% endif %}
-         
-         <form method="POST">
-@@ -501,6 +502,12 @@
- def login_required(f):
-     @wraps(f)
-     def decorated_function(*args, **kwargs):
-+        # Validate session to prevent session fixation
-+        if
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/routes.py
++++ b/honeycode-honeypot/routes.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/models.py
++++ b/honeycode-honeypot/models.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/api.py
++++ b/honeycode-honeypot/api.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/views.py
++++ b/honeycode-honeypot/views.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/controllers.py
++++ b/honeycode-honeypot/controllers.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/utils.py
++++ b/honeycode-honeypot/utils.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/serializers.py
++++ b/honeycode-honeypot/serializers.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/forms.py
++++ b/honeycode-honeypot/forms.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/validators.py
++++ b/honeycode-honeypot/validators.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/middleware.py
++++ b/honeycode-honeypot/middleware.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/handlers.py
++++ b/honeycode-honeypot/handlers.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/services.py
++++ b/honeycode-honeypot/services.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/core.py
++++ b/honeycode-honeypot/core.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/main.py
++++ b/honeycode-honeypot/main.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/server.py
++++ b/honeycode-honeypot/server.py
+@@ -0,0 +1,0 @@
+--- a/honeycode-honeypot/__init__.py
++++ b/honeycode-honeypot/__init__.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine
++++ b/eval-engine
+@@ -0,0 +1,0 @@
+--- a/eval-engine/app.py
++++ b/eval-engine/app.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/routes.py
++++ b/eval-engine/routes.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/models.py
++++ b/eval-engine/models.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/api.py
++++ b/eval-engine/api.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/views.py
++++ b/eval-engine/views.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/controllers.py
++++ b/eval-engine/controllers.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/utils.py
++++ b/eval-engine/utils.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/serializers.py
++++ b/eval-engine/serializers.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/forms.py
++++ b/eval-engine/forms.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/validators.py
++++ b/eval-engine/validators.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/middleware.py
++++ b/eval-engine/middleware.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/handlers.py
++++ b/eval-engine/handlers.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/services.py
++++ b/eval-engine/services.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/core.py
++++ b/eval-engine/core.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/main.py
++++ b/eval-engine/main.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/server.py
++++ b/eval-engine/server.py
+@@ -0,0 +1,0 @@
+--- a/eval-engine/__init__.py
++++ b/eval-engine/__init__.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym
++++ b/ai-training-gym
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/app.py
++++ b/ai-training-gym/app.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/routes.py
++++ b/ai-training-gym/routes.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/models.py
++++ b/ai-training-gym/models.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/api.py
++++ b/ai-training-gym/api.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/views.py
++++ b/ai-training-gym/views.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/controllers.py
++++ b/ai-training-gym/controllers.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/utils.py
++++ b/ai-training-gym/utils.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/serializers.py
++++ b/ai-training-gym/serializers.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/forms.py
++++ b/ai-training-gym/forms.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/validators.py
++++ b/ai-training-gym/validators.py
+@@ -0,0 +1,0 @@
+--- a/ai-training-gym/middleware.py
++++
