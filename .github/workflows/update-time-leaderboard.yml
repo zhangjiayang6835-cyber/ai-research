@@ -1,13 +1,91 @@
 name: Update Time Leaderboard
+
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
+    inputs:
+      user:
+        description: "参与者"
+        required: true
+      issue:
+        description: "任务 Issue 编号"
+        required: true
+      elapsed_sec:
+        description: "耗时（秒）"
+        required: true
+
 permissions:
   issues: write
   contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - run: echo test
+      - uses: actions/checkout@v4
+
+      - name: Update Time Ledger
+        id: time
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const user = "${{ github.event.inputs.user }}";
+            const issue = "${{ github.event.inputs.issue }}";
+            const elapsedSec = parseInt("${{ github.event.inputs.elapsed_sec }}");
+            const now = new Date().toISOString();
+
+            // Read or create TIME_LEDGER
+            let ledger = {};
+            if (fs.existsSync("TIME_LEDGER.json")) {
+              ledger = JSON.parse(fs.readFileSync("TIME_LEDGER.json", "utf-8"));
+            }
+            if (!ledger[user]) ledger[user] = {totalSec: 0, tasks: []};
+            ledger[user].totalSec += elapsedSec;
+            ledger[user].tasks.push({issue, elapsedSec, date: now});
+
+            fs.writeFileSync("TIME_LEDGER.json", JSON.stringify(ledger, null, 2));
+
+            // Build time leaderboard table
+            function fmt(sec) {
+              if (sec < 60) return sec + "s";
+              if (sec < 3600) return Math.floor(sec/60) + "m " + (sec%60) + "s";
+              if (sec < 86400) return Math.floor(sec/3600) + "h " + Math.floor((sec%3600)/60) + "m";
+              return (sec/86400).toFixed(1) + "d";
+            }
+
+            const sorted = Object.entries(ledger)
+              .sort((a, b) => a[1].totalSec - b[1].totalSec);
+
+            let table = `# ⏱️ 任务耗时排行榜\n\n按用户聚合总耗时，包含该用户完成所有任务的总时间。\n\n`;
+            table += `| 排名 | 参与者 | 完成任务数 | 总耗时 | 平均耗时 |\n`;
+            table += `|:---:|:------:|:--------:|:------:|:--------:|\n`;
+
+            for (let i = 0; i < sorted.length; i++) {
+              const [name, data] = sorted[i];
+              const count = data.tasks.length;
+              const avg = Math.floor(data.totalSec / count);
+              table += `| ${i+1} | ${name} | ${count} | ${fmt(data.totalSec)} | ${fmt(avg)} |\n`;
+            }
+
+            table += `\n> ⏱️ 总耗时 = 该用户所有任务的耗时之和\n`;
+            table += `> 平均耗时 = 总耗时 / 任务数\n`;
+            table += `> 每次提交自动更新，按总耗时升序排列\n\n`;
+            table += `<!-- last-updated: ${now} -->`;
+
+            // Update Issue #29 body
+            await github.rest.issues.update({
+              issue_number: 29,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: table
+            });
+
+            console.log(`Time leaderboard: @${user} +${fmt(elapsedSec)}`);
+            console.log("💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。感谢贡献！🎉");
+
+      - name: Commit Time Ledger
+        run: |
+          git config user.name "AI Training Bot"
+          git config user.email "bot@ai-research.github"
+          git add TIME_LEDGER.json
+          git diff --cached --quiet || (git commit -m "time: update ledger" && git pull --rebase origin master && git push origin master)
