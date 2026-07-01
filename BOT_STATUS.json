@@ -1,0 +1,12 @@
+{
+  "lastCheck": "2026-07-01T08:07:42.219Z",
+  "successRate": "15%",
+  "totalRuns": 20,
+  "successRuns": 3,
+  "failureRuns": 16,
+  "openIssues": 188,
+  "openPRs": 30,
+  "mergeablePRs": 0,
+  "conflictedPRs": 0,
+  "healthy": false
+}
