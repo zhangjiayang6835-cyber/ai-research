@@ -96,7 +96,6 @@ jobs:
 
             fs.writeFileSync("README.md", readme);
             console.log("Stats dashboard updated!");
-            console.log("💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。感谢贡献！🎉");
 
       - name: Commit Stats
         run: |
