@@ -87,7 +87,73 @@ jobs:
             if (clean) {
               report += `### ✅ 审查通过\n\n未检测到可疑模式。\n\n`;
             } else {
-            console.log("test");
+              report += `### ⚠️ 检测到可疑模式\n\n| 嫌疑项 | 置信度 | 说明 |\n|:------:|:------:|:----:|\n`;
+              for (const f of findings) {
+                report += `| ${f.name} | ${Math.floor(f.conf*100)}% | ${f.desc} |\n`;
+              }
+              report += "\n";
+            }
+
+            report += `**最终得分**: ${total}/${baseScore}\n`;
+
+            // Post evaluation
+            await github.rest.issues.createComment({
+              issue_number: issueNum,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+            // Add labels
+            const newLabels = ["auto-reviewed"];
+            if (clean) newLabels.push("approved");
+            else newLabels.push("cheat-detected");
+            await github.rest.issues.addLabels({
+              issue_number: issueNum,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: newLabels
+            });
+
+            // Save to BOUNTY_LEDGER
+            const fs = require("fs");
+            let ledger = {};
+            if (fs.existsSync("BOUNTY_LEDGER.json")) {
+              ledger = JSON.parse(fs.readFileSync("BOUNTY_LEDGER.json", "utf-8"));
+            }
+            if (!ledger[author]) ledger[author] = {total: 0, submissions: []};
+            ledger[author].total += total;
+            ledger[author].submissions.push({
+              issue: issueNum,
+              targetIssue: targetIssue || "N/A",
+              score: total,
+              clean: clean,
+              difficulty: diff,
+              date: new Date().toISOString()
+            });
+            fs.writeFileSync("BOUNTY_LEDGER.json", JSON.stringify(ledger, null, 2));
+
+            // Calculate time for time leaderboard
+            if (targetIssue) {
+              try {
+                const { data: bugIssue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(targetIssue)
+                });
+                const created = new Date(bugIssue.created_at);
+                const submitted = new Date(issue.created_at);
+                const elapsedSec = Math.floor((submitted - created) / 1000);
+                core.setOutput("elapsed_sec", elapsedSec.toString());
+                core.setOutput("target_issue", targetIssue);
+              } catch (e) {
+                console.log("Could not calculate time: " + e.message);
+              }
+            }
+
+            console.log(`Evaluated new issue #${issueNum} @${author}: ${total}/${baseScore}`);
+            console.log("💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。感谢贡献！🎉");
+
       - name: Commit Ledger
         run: |
           git config user.name "AI Training Bot"
