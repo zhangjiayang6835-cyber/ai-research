@@ -37,9 +37,15 @@ jobs:
             credit[author].merged += 1;
             credit[author].lastMerge = new Date().toISOString();
 
+            let creditSha;
+            try {
+              const { data: cf } = await github.rest.repos.getContent({ owner, repo, path: "CREDIT_SCORE.json" });
+              creditSha = cf.sha;
+            } catch (e) { creditSha = undefined; }
             await github.rest.repos.createOrUpdateFileContents({
               owner, repo, path: "CREDIT_SCORE.json",
               message: "chore: update credit score for @" + author,
-              content: Buffer.from(JSON.stringify(credit, null, 2)).toString("base64")
+              content: Buffer.from(JSON.stringify(credit, null, 2)).toString("base64"),
+              sha: creditSha
             });
             console.log("Credit score updated for @" + author + ": +" + points + " (total: " + credit[author].score + ")");
