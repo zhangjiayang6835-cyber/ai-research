@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 import time
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from dataclasses import dataclass
@@ -23,16 +24,25 @@ from typing import Any
 # Configuration
 # ---------------------------------------------------------------------------
 
+_JWT_KEYS: dict[str, str] = {
+    # 32+ byte demo keys keep the sample honest: no tiny shared JWT secrets.
+    "shared-idp-v1": "shared-idp-demo-jwt-key-32-bytes-minimum",
+}
+
 TENANT_CONFIG: dict[str, dict[str, Any]] = {
     "tenant-alpha": {
         "issuer": "https://idp.example.com",
         "audience": "app.example.com",
-        "public_key": "shared-idp-key",
+        "public_key": _JWT_KEYS["shared-idp-v1"],
+        "kid": "shared-idp-v1",
+        "allowed_kids": {"shared-idp-v1"},
     },
     "tenant-beta": {
         "issuer": "https://idp.example.com",
         "audience": "app.example.com",
-        "public_key": "shared-idp-key",
+        "public_key": _JWT_KEYS["shared-idp-v1"],
+        "kid": "shared-idp-v1",
+        "allowed_kids": {"shared-idp-v1"},
     },
 }
 
@@ -41,12 +51,16 @@ TENANT_AUDIENCE_ISOLATED_CONFIG: dict[str, dict[str, Any]] = {
     "tenant-alpha": {
         "issuer": "https://idp.example.com",
         "audience": "sp-alpha-app",
-        "public_key": "shared-idp-key",
+        "public_key": _JWT_KEYS["shared-idp-v1"],
+        "kid": "shared-idp-v1",
+        "allowed_kids": {"shared-idp-v1"},
     },
     "tenant-beta": {
         "issuer": "https://idp.example.com",
         "audience": "sp-beta-app",
-        "public_key": "shared-idp-key",
+        "public_key": _JWT_KEYS["shared-idp-v1"],
+        "kid": "shared-idp-v1",
+        "allowed_kids": {"shared-idp-v1"},
     },
 }
 
@@ -67,6 +81,8 @@ class FederationConfig:
     issuer: str
     audience: str
     public_key: str
+    kid: str
+    allowed_kids: set[str]
 
 
 @dataclass
@@ -94,8 +110,12 @@ def _b64decode(data: str) -> bytes:
     return urlsafe_b64decode(padded)
 
 
-def _create_jwt(payload: dict, secret: str) -> str:
-    header = _b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+def _create_jwt(payload: dict, secret: str, kid: str = "shared-idp-v1") -> str:
+    if len(secret.encode()) < 32:
+        raise ValueError("JWT signing secret must be at least 32 bytes")
+    header = _b64encode(
+        json.dumps({"alg": "HS256", "typ": "JWT", "kid": kid}, sort_keys=True).encode()
+    )
     body = _b64encode(json.dumps(payload, sort_keys=True).encode())
     signature = hmac.new(
         secret.encode(), f"{header}.{body}".encode(), hashlib.sha256
@@ -103,13 +123,29 @@ def _create_jwt(payload: dict, secret: str) -> str:
     return f"{header}.{body}.{signature}"
 
 
-def _verify_jwt(token: str, secret: str) -> dict[str, Any] | None:
+def _verify_jwt(token: str, cfg: FederationConfig) -> dict[str, Any] | None:
     parts = token.split(".")
     if len(parts) != 3:
         return None
     header_b64, body_b64, sig = parts
+    try:
+        header = json.loads(_b64decode(header_b64))
+    except (json.JSONDecodeError, ValueError, Exception):
+        return None
+
+    # Never trust token headers to choose algorithms or file-backed keys.
+    if header.get("alg") != "HS256":
+        return None
+    if header.get("typ") not in (None, "JWT"):
+        return None
+    kid = header.get("kid")
+    if not isinstance(kid, str) or kid not in cfg.allowed_kids:
+        return None
+    if len(cfg.public_key.encode()) < 32:
+        return None
+
     expected_sig = hmac.new(
-        secret.encode(), f"{header_b64}.{body_b64}".encode(), hashlib.sha256
+        cfg.public_key.encode(), f"{header_b64}.{body_b64}".encode(), hashlib.sha256
     ).hexdigest()
     if not hmac.compare_digest(sig, expected_sig):
         return None
@@ -131,6 +167,8 @@ def get_tenant_config(tenant_id: str) -> FederationConfig | None:
         issuer=cfg["issuer"],
         audience=cfg["audience"],
         public_key=cfg["public_key"],
+        kid=cfg["kid"],
+        allowed_kids=set(cfg["allowed_kids"]),
     )
 
 
@@ -166,7 +204,7 @@ def validate_sso_token(
         }
 
     # 2. Verify token signature
-    payload = _verify_jwt(token, tenant_cfg.public_key)
+    payload = _verify_jwt(token, tenant_cfg)
     if payload is None:
         return {"success": False, "error": "invalid_token_signature"}
 
@@ -299,7 +337,4 @@ def issue_sso_token(
     if override_claims:
         payload.update(override_claims)
 
-    return _create_jwt(payload, cfg.public_key)
-
-
-import os
+    return _create_jwt(payload, cfg.public_key, cfg.kid)

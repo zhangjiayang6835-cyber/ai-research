@@ -1,5 +1,7 @@
 """Tests for SSO Federation cross-tenant account takeover prevention."""
 
+import hashlib
+import hmac
 import time
 from base64 import urlsafe_b64encode
 from json import dumps
@@ -17,6 +19,72 @@ from sso_federation import (
 def setup_function():
     _used_jti.clear()
     _session_store.clear()
+
+
+# ---------------------------------------------------------------------------
+# JWT header hardening: none algorithm, weak secrets, and kid injection
+# ---------------------------------------------------------------------------
+
+def test_none_algorithm_token_rejected():
+    payload = {
+        "iss": "https://idp.example.com",
+        "aud": "app.example.com",
+        "sub": "admin",
+        "tid": "tenant-alpha",
+        "exp": int(time.time()) + 300,
+        "iat": int(time.time()),
+        "jti": "none-alg-jti-0001",
+    }
+    header = urlsafe_b64encode(dumps({"alg": "none", "typ": "JWT"}).encode()).decode().rstrip("=")
+    body = urlsafe_b64encode(dumps(payload).encode()).decode().rstrip("=")
+    token = f"{header}.{body}."
+
+    result = validate_sso_token(token, "tenant-alpha")
+
+    assert isinstance(result, dict)
+    assert result.get("error") == "invalid_token_signature"
+
+
+def test_weak_jwt_secret_refused():
+    payload = {
+        "iss": "https://idp.example.com",
+        "aud": "app.example.com",
+        "sub": "user-1",
+        "tid": "tenant-alpha",
+        "exp": int(time.time()) + 300,
+        "iat": int(time.time()),
+        "jti": "weak-secret-jti-001",
+    }
+
+    try:
+        _create_jwt(payload, "secret")
+    except ValueError as exc:
+        assert "at least 32 bytes" in str(exc)
+    else:
+        raise AssertionError("weak JWT secrets must be rejected")
+
+
+def test_kid_path_traversal_token_rejected():
+    token = issue_sso_token(
+        tenant_id="tenant-alpha",
+        user_id="user-1",
+        override_claims={"jti": "kid-traversal-jti-001"},
+    )
+    header_b64, body_b64, _ = token.split(".")
+    evil_header = urlsafe_b64encode(
+        dumps({"alg": "HS256", "typ": "JWT", "kid": "../../etc/passwd"}).encode()
+    ).decode().rstrip("=")
+    signature = hmac.new(
+        "shared-idp-demo-jwt-key-32-bytes-minimum".encode(),
+        f"{evil_header}.{body_b64}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    evil_token = f"{evil_header}.{body_b64}.{signature}"
+
+    result = validate_sso_token(evil_token, "tenant-alpha")
+
+    assert isinstance(result, dict)
+    assert result.get("error") == "invalid_token_signature"
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +263,7 @@ def test_tid_claim_removed_rejected():
         "iat": int(time.time()),
         "jti": "test-jti-removed-tid",
     }
-    token = _create_jwt(payload, "shared-idp-key")
+    token = _create_jwt(payload, "shared-idp-demo-jwt-key-32-bytes-minimum", "shared-idp-v1")
     result = validate_sso_token(token, "tenant-alpha")
     assert isinstance(result, dict)
     assert result.get("error") == "missing_required_claims"
@@ -210,7 +278,7 @@ def test_missing_jti_rejected():
         "exp": int(time.time()) + 300,
         "iat": int(time.time()),
     }
-    token = _create_jwt(payload, "shared-idp-key")
+    token = _create_jwt(payload, "shared-idp-demo-jwt-key-32-bytes-minimum", "shared-idp-v1")
     result = validate_sso_token(token, "tenant-alpha")
     assert isinstance(result, dict)
     assert result.get("error") == "missing_required_claims"
