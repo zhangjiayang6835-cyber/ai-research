@@ -60,7 +60,7 @@ jobs:
               const addedLines = patch.split("
             ").filter(l => l.startsWith("+") && !l.startsWith("+++"));
               const removedLines = patch.split("
-").filter(l => l.startsWith("-") && !l.startsWith("---"));
+            ").filter(l => l.startsWith("-") && !l.startsWith("---"));
 
               // Check for common fix patterns
               const hasInputValidation = patch.some(l => /validate|sanitize|escape|strip/i.test(l));
