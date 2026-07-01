@@ -1,4 +1,16 @@
-# Changelog\n\n## 2026-07-01\n\n### 🐛 Bug修复\n\n- fix: exclude skipped/cancelled runs from health check\n- fix: add SHA param for CREDIT_SCORE.json update\n- fix: apply solution for issue #107
+# Changelog\n\n## 2026-07-01\n\n### 🐛 Bug修复\n\n- fix: use core.warning instead of core.setFailed for expected no-code case\n- fix: exclude skipped/cancelled runs from health check\n- fix: add SHA param for CREDIT_SCORE.json update\n- fix: apply solution for issue #107
+# Conflicts:
+#	shanaboo_solution.md\n- fix: apply solution for issue #108
+# Conflicts:
+#	notify_email.py\n- fix: apply solution for issue #149
+# Conflicts:
+#	shanaboo_solution.md\n- fix: apply solution for issue #155
+# Conflicts:
+#	shanaboo_solution.md\n- fix: per-PR concurrency to prevent cancellation\n- fix: apply solution for issue #145
+# Conflicts:
+#	shanaboo_solution.md\n- fix: change undefined 'score' to 'totalScore' in PR review workflow\n- fix: apply solution for issue #140
+# Conflicts:
+#	check_issue29.py\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @AI Training Bot\n- @AutoBot\n- @Daniel Bates\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-01\n\n### 🐛 Bug修复\n\n- fix: exclude skipped/cancelled runs from health check\n- fix: add SHA param for CREDIT_SCORE.json update\n- fix: apply solution for issue #107
 # Conflicts:
 #	shanaboo_solution.md\n- fix: apply solution for issue #108
 # Conflicts:
