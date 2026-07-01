@@ -105,6 +105,21 @@ jobs:
             });
 
             console.log(`Evaluated #${issueNum} @${author}: ${total}/${baseScore}, ${findings.length} findings`);
+            // Calculate submission time
+            const issueCreateDate = new Date(issue.created_at);
+            const commentDate = new Date(comment.created_at);
+            const elapsedSec = Math.floor((commentDate - issueCreateDate) / 1000);
+
+            // Save to TIME_LEDGER
+            let tledger = {};
+            if (fs.existsSync("TIME_LEDGER.json")) {
+              tledger = JSON.parse(fs.readFileSync("TIME_LEDGER.json", "utf-8"));
+            }
+            if (!tledger[author]) tledger[author] = {totalSec: 0, tasks: []};
+            tledger[author].totalSec += elapsedSec;
+            tledger[author].tasks.push({issue: issueNum, elapsedSec, date: new Date().toISOString()});
+            fs.writeFileSync("TIME_LEDGER.json", JSON.stringify(tledger, null, 2));
+
 
             // Save to BOUNTY_LEDGER
             const fs = require("fs");
@@ -122,5 +137,5 @@ jobs:
         run: |
           git config user.name "AI Training Bot"
           git config user.email "bot@ai-research.github"
-          git add BOUNTY_LEDGER.json
+          git add BOUNTY_LEDGER.json TIME_LEDGER.json
           git diff --cached --quiet || (git commit -m "bounty: update ledger" && git pull --rebase origin master && git push origin master)
