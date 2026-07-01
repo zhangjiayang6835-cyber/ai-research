@@ -114,6 +114,7 @@ jobs:
 
       - name: Commit Payout Manifests
         run: |
+            console.log("💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。感谢贡献！🎉");
           git config user.name "AI Training Bot"
           git config user.email "bot@ai-research.github"
           git add payout_*.json BOUNTY_LEDGER.json 2>/dev/null || true
