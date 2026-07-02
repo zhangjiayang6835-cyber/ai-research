@@ -1,21 +1,13 @@
-import hmac
 import hashlib
-import secrets
+import hmac
 
 
 def verify_jwt(token, secret):
-    expected_sig = hmac.new(
-        secret.encode(), f"{header}.{payload}".encode(), hashlib.sha256
-    ).hexdigest()
-    
-    # Use constant-time comparison to prevent timing attacks
-    if not secrets.compare_digest(
-        sig.encode('utf-8'), expected_sig.encode('utf-8')
-    ):
-        raise ValueError("Invalid signature")
-    
-    return payload
-def create_jwt(payload, secret):
-    import base64, json
-    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
-    payload = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    """
+    Verify JWT token using HMAC-SHA256.
+    Protected against hash length extension attacks.
+    """
+    parts = token.split('.')
+    message = f"{parts[0]}.{parts[1]}"
+    expected = hmac.new(secret.encode('utf-8'), message.encode('utf-8'), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(parts[2].encode('utf-8'), expected.encode('utf-8'))
