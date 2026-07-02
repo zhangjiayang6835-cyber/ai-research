@@ -1,182 +1,176 @@
  ```diff
 --- a/src
 +++ b/src
-@@ -0,0 +1,2 @@
-+# This directory exists but we need to create the actual file
-+# The fix will be in a new file: src/request_handler.py
---- a/src/request_handler.py
-+++ b/src/request_handler.py
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,1 @@
++/* This directory exists but no relevant files were shown */
+--- /dev/null
++++ b/fix-http-request-smuggling.py
+@@ -0,0 +1,156 @@
++#!/usr/bin/env python3
 +"""
-+Secure HTTP Request Handler
-+Fixes HTTP Request Smuggling + Cache Poisoning vulnerabilities
++HTTP Request Smuggling + Cache Poisoning Fix
++
++This module provides secure HTTP parsing and request handling to prevent
++HTTP Request Smuggling (HRS) and Cache Poisoning attacks.
++
++Vulnerabilities addressed:
++1. CL.TE (Content-Length + Transfer-Encoding) smuggling
++2. TE.CL smuggling
++3. TE.TE smuggling with obfuscated headers
++4. Double Content-Length headers
++5. Chunked encoding abuse
 +"""
 +
 +import re
-+import hashlib
-+from typing import Optional, Dict, List, Tuple
-+from urllib.parse import unquote
++from typing import Optional, Dict, List, Tuple, Union
 +
 +
-+class SecureHTTPParser:
++class HTTPParserError(Exception):
++    """Raised when an HTTP parsing security violation is detected."""
++    pass
++
++
++class HTTPRequestSmugglingDetector:
 +    """
-+    Secure HTTP parser that prevents HTTP Request Smuggling and Cache Poisoning.
++    Detects and prevents HTTP Request Smuggling attacks.
++    
++    Implements defenses against:
++    - CL.TE attacks
++    - TE.CL attacks  
++    - TE.TE attacks with header obfuscation
++    - Double Content-Length
++    - Chunked encoding anomalies
 +    """
 +    
-+    # Maximum header size to prevent DoS
-+    MAX_HEADER_SIZE = 8192
-+    MAX_HEADERS = 100
-+    MAX_URI_LENGTH = 8192
++    # Transfer-Encoding header variations used for obfuscation
++    TE_OBFUSCATED_PATTERNS = [
++        b'transfer-encoding',
++        b'transfer_encoding',
++        b'transfer+encoding',
++        b'transfer encoding',
++        b'transfer-encoding:',
++        b'transfer-encoding\x00',
++        b'transfer-encoding\x0b',
++        b'transfer-encoding\x0c',
++        b'transfer-encoding ',
++    ]
 +    
-+    # Headers that can cause smuggling when duplicated or malformed
-+    SINGLE_VALUE_HEADERS = {
-+        'content-length', 'host', 'content-type', 'content-encoding',
-+        'transfer-encoding', 'content-length', 'upgrade', 'connection'
-+    }
++    # Chunk size patterns that could indicate attacks
++    CHUNK_ATTACK_PATTERNS = [
++        b';',  # chunk-ext with semicolon can cause parsing differences
++    ]
 +    
-+    # Hop-by-hop headers that should not be forwarded
-+    HOP_BY_HOP_HEADERS = {
-+        'connection', 'keep-alive', 'proxy-authenticate',
-+        'proxy-authorization', 'te', 'trailers', 'transfer-encoding', 'upgrade'
-+    }
-+    
-+    def __init__(self):
-+        self.cache = {}
-+        self.cache_max_size = 1000
++    def __init__(self, max_headers: int = 100, max_header_size: int = 8192):
++        self.max_headers = max_headers
++        self.max_header_size = max_header_size
 +    
 +    def parse_request(self, raw_request: bytes) -> Dict:
 +        """
-+        Securely parse an HTTP request, preventing smuggling attacks.
++        Securely parse an HTTP request, detecting smuggling attempts.
++        
++        Args:
++            raw_request: Raw HTTP request bytes
++            
++        Returns:
++            Parsed request dictionary
++            
++        Raises:
++            HTTPParserError: If smuggling attempt detected
 +        """
-+        if len(raw_request) > self.MAX_HEADER_SIZE * 2:
-+            raise ValueError("Request too large")
++        if len(raw_request) > 1024 * 1024:  # 1MB max
++            raise HTTPParserError("Request too large")
 +        
 +        # Split headers from body
 +        try:
-+            header_part, _, body = raw_request.partition(b'\r\n\r\n')
-+        except Exception:
-+            header_part = raw_request
-+            body = b''
++            header_end = raw_request.index(b'\r\n\r\n')
++        except ValueError:
++            try:
++                header_end = raw_request.index(b'\n\n')
++            except ValueError:
++                header_end = len(raw_request)
++        
++        headers_raw = raw_request[:header_end]
++        body = raw_request[header_end + 4 if b'\r\n\r\n' in raw_request else header_end + 2:]
 +        
 +        # Parse request line
-+        lines = header_part.split(b'\r\n')
-+        if not lines:
-+            raise ValueError("Empty request")
++        lines = headers_raw.split(b'\r\n')
++        if len(lines) == 1:
++            lines = headers_raw.split(b'\n')
++        
++        if not lines or not lines[0]:
++            raise HTTPParserError("Empty request")
 +        
 +        request_line = lines[0].decode('ascii', errors='replace')
-+        method, uri, version = self._parse_request_line(request_line)
-+        
-+        # Validate URI
-+        if len(uri) > self.MAX_URI_LENGTH:
-+            raise ValueError("URI too long")
 +        
 +        # Parse headers securely
-+        headers = self._parse_headers(lines[1:])
-+        
-+        # Detect and prevent smuggling
-+        self._detect_smuggling(headers, body)
-+        
-+        # Normalize headers for cache key
-+        cache_key = self._generate_cache_key(method, uri, headers, body)
-+        
-+        return {
-+            'method': method,
-+            'uri': uri,
-+            'version': version,
-+            'headers': headers,
-+            'body': body,
-+            'cache_key': cache_key,
-+            'is_valid': True
-+        }
-+    
-+    def _parse_request_line(self, line: str) -> Tuple[str, str, str]:
-+        """Parse and validate the HTTP request line."""
-+        parts = line.split(' ')
-+        if len(parts) != 3:
-+            raise ValueError("Invalid request line")
-+        
-+        method, uri, version = parts
-+        
-+        # Validate method: only allow safe characters
-+        if not re.match(r'^[A-Z]+$', method):
-+            raise ValueError("Invalid HTTP method")
-+        
-+        # Validate version
-+        if not re.match(r'^HTTP/\d\.\d$', version):
-+            raise ValueError("Invalid HTTP version")
-+        
-+        # Decode and validate URI
-+        uri = unquote(uri)
-+        if '\x00' in uri or '\n' in uri or '\r' in uri:
-+            raise ValueError("Invalid characters in URI")
-+        
-+        return method, uri, version
-+    
-+    def _parse_headers(self, header_lines: List[bytes]) -> Dict[str, List[str]]:
-+        """Parse headers with strict validation."""
 +        headers: Dict[str, List[str]] = {}
-+        
-+        for line in header_lines:
-+            if len(line) > self.MAX_HEADER_SIZE:
-+                raise ValueError("Header line too long")
++        for line in lines[1:]:
++            if not line:
++                continue
++            if len(line) > self.max_header_size:
++                raise HTTPParserError("Header too large")
 +            
-+            # Parse header
++            # Find colon separator
 +            if b':' not in line:
 +                continue
 +            
 +            name, value = line.split(b':', 1)
-+            name = name.decode('ascii', errors='replace').strip().lower()
-+            value = value.decode('ascii', errors='replace').strip()
++            name_str = name.strip().decode('ascii', errors='replace').lower()
++            value_str = value.strip().decode('ascii', errors='replace')
 +            
-+            # Remove dangerous characters
-+            value = self._sanitize_header_value(value)
-+            
-+            # Check for single-value headers being duplicated
-+            if name in self.SINGLE_VALUE_HEADERS:
-+                if name in headers:
-+                    raise ValueError(f"Duplicate header: {name}")
-+            
-+            if name not in headers:
-+                headers[name] = []
-+            headers[name].append(value)
++            if name_str not in headers:
++                headers[name_str] = []
++            headers[name_str].append(value_str)
 +        
-+        return headers
-+    
-+    def _sanitize_header_value(self, value: str) -> str:
-+        """Remove dangerous characters from header values."""
-+        # Remove null bytes and carriage returns
-+        value = value.replace('\x00', '').replace('\r', '')
-+        # Replace newlines with spaces to prevent header injection
-+        value = value.replace('\n', ' ')
-+        return value.strip()
++        # Detect smuggling attempts
++        self._detect_smuggling(headers, body)
++        
++        return {
++            'request_line': request_line,
++            'headers': headers,
++            'body': body
++        }
 +    
 +    def _detect_smuggling(self, headers: Dict[str, List[str]], body: bytes) -> None:
 +        """
-+        Detect HTTP Request Smuggling attempts.
-+        Raises ValueError if smuggling is detected.
++        Detect HTTP request smuggling attempts.
++        
++        Args:
++            headers: Parsed headers dictionary
++            body: Request body
++            
++        Raises:
++            HTTPParserError: If smuggling detected
 +        """
-+        # Check for both Content-Length and Transfer-Encoding
-+        has_cl = 'content-length' in headers
-+        has_te = 'transfer-encoding' in headers
++        has_content_length = 'content-length' in headers
++        has_transfer_encoding = 'transfer-encoding' in headers
 +        
-+        if has_cl and has_te:
-+            # RFC 7230 Section 3.3.1: If Transfer-Encoding is present, 
-+            # Content-Length must be ignored
-+            # Reject requests with both to prevent smuggling
-+            raise ValueError("Both Content-Length and Transfer-Encoding present")
++        # Check for double Content-Length
++        if has_content_length and len(headers.get('content-length', [])) > 1:
++            raise HTTPParserError("Double Content-Length header detected")
 +        
-+        # Validate Content-Length
-+        if has_cl:
-+            cl_values = headers['content-length']
-+            if len(cl_values) > 1:
-+                raise ValueError("Multiple Content-Length headers")
-+            try:
-+                cl = int(cl_values[0])
-+                if cl < 0:
-+                    raise ValueError("Negative Content-Length")
-+            except ValueError:
-+                raise ValueError("Invalid Content-Length")
++        # Check for conflicting Content-Length and Transfer-Encoding
++        if has_content_length and has_transfer_encoding:
++            # RFC 7230 Section 3.3.1: When both present, Transfer-Encoding takes precedence
++            # But for security, we should reject or carefully handle
++            te_values = headers.get('transfer-encoding', [])
++            if te_values and 'chunked' in te_values[-1].lower():
++                # TE.CL conflict - potential smuggling
++                raise HTTPParserError("CL.TE smuggling attempt detected: both Content-Length and Transfer-Encoding: chunked present")
 +        
-+        # Validate Transfer-Encoding
-+        if has_te:
-+
++        # Check for obfuscated Transfer-Encoding
++        for header_name in headers.keys():
++            decoded = header_name.encode('ascii', errors='replace').lower()
++            # Check for non-standard characters in header name
++            if any(c > 127 or c < 32 for c in decoded):
++                raise HTTPParserError("Non-ASCII characters in header name - potential smuggling")
++        
++        # Validate Transfer-Encoding value
++        if has_transfer_encoding:
++            te = headers.get('transfer-encoding', [''])[-1].lower()
++            # Check for multiple encodings that could confuse parsers
++            if te.count('chunked') > 1:
++                raise HTTPParserError("Multiple chunked in Transfer-Encoding")
++            # chunked must be last
++            encodings = [e.strip() for e in te.split(',')]
++            if 'chunked' in encodings and encodings[-
