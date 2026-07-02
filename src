@@ -1,0 +1,64 @@
+// Server-side prototype pollution fix - safe JSON merge utility
+// This file provides a secure alternative to recursive merge that prevents prototype pollution
+
+/**
+ * Checks if a property key is dangerous (could lead to prototype pollution)
+ * @param {string} key - The property key to check
+ * @returns {boolean} - True if the key is dangerous
+ */
+function isDangerousKey(key) {
+    return key === '__proto__' || key === 'constructor' || key === 'prototype';
+}
+
+/**
+ * Safely merges objects without allowing prototype pollution
+ * @param {Object} target - The target object to merge into
+ * @param {Object} source - The source object to merge from
+ * @returns {Object} - The merged object
+ */
+function safeMerge(target, source) {
+    if (typeof source !== 'object' || source === null) {
+        return source;
+    }
+    
+    if (typeof target !== 'object' || target === null) {
+        target = {};
+    }
+    
+    for (const key of Object.keys(source)) {
+        // Block dangerous keys that could pollute prototypes
+        if (isDangerousKey(key)) {
+            continue;
+        }
+        
+        const value = source[key];
+        
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+            target[key] = safeMerge(target[key] || {}, value);
+        } else {
+            target[key] = value;
+        }
+    }
+    
+    return target;
+}
+
+/**
+ * Safe JSON parse that prevents prototype pollution
+ * @param {string} jsonString - The JSON string to parse
+ * @returns {Object} - The parsed object with prototype pollution protection
+ */
+function safeJsonParse(jsonString) {
+    // Parse the JSON normally
+    const parsed = JSON.parse(jsonString);
+    
+    // If it's not an object, return as-is
+    if (typeof parsed !== 'object' || parsed === null) {
+        return parsed;
+    }
+    
+    // Return a new object with safe merge applied
+    return safeMerge({}, parsed);
+}
+
+module.exports = { safeMerge, safeJsonParse, isDangerousKey };
