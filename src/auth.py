@@ -1,0 +1,45 @@
+import hmac
+import hashlib
+import base64
+import secrets
+
+
+def base64url_encode(data):
+
+
+def create_jwt(payload, secret):
+    """Create a JWT token with secure HMAC-SHA256 signing."""
+    header = base64url_encode(b'{"alg":"HS256","typ":"JWT"}')
+    payload = base64url_encode(payload.encode('utf-8'))
+    token = sign_token(header, payload, secret)
+
+
+def sign_token(header, payload, secret):
+    """Sign a JWT token using HMAC-SHA256 with constant-time comparison."""
+    message = f"{header}.{payload}"
+    signature = hmac.new(
+        secret.encode('utf-8'),
+
+
+def verify_token(token, secret):
+    """Verify a JWT token signature with constant-time comparison."""
+    parts = token.split('.')
+    if len(parts) != 3:
+        return False
+    payload = parts[1]
+    signature = parts[2]
+    
+    message = f"{header}.{payload}"
+    expected_signature = hmac.new(
+        secret.encode('utf-8'),
+        message.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    
+    # Secure: constant-time comparison to prevent timing attacks
+    return hmac.compare_digest(signature, expected_signature)
+
+
+def generate_secure_secret(length=32):
+    """Generate a cryptographically secure random secret."""
+    return secrets.token_hex(length)
