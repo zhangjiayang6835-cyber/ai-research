@@ -4,73 +4,67 @@ import os
 import hmac
 import hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.backends import default_backend
 
 
-    """
-    Manages encrypted session cookies for web application.
-    """
-    
+KEY_SIZE = 32
+NONCE_SIZE = 12
+TAG_SIZE = 16
+
+class SessionCookie:
     def __init__(self, key=None):
-        """
-        Initialize with a secret key.
-        If no key provided, generates a random one (for demo purposes).
-        """
-        self.key = key or os.urandom(32)  # 256-bit key for AES-256-GCM
-    
-    def encrypt_session(self, session_data: dict) -> str:
-        """
-        Encrypt session data using AES-GCM with authentication tag.
-        Returns base64-encoded ciphertext.
-        """
-        # Serialize session data with timestamp for replay protection
-        payload = {
-            'data': session_data,
-            'nonce': base64.b64encode(os.urandom(16)).decode('ascii')
-        }
-        plaintext = json.dumps(payload).encode('utf-8')
-        
-        # Generate random nonce for GCM
-        nonce = os.urandom(12)  # 96-bit nonce recommended for GCM
-        
-        # Encrypt with AES-GCM
-        aesgcm = AESGCM(self.key)
-        ciphertext = aesgcm.encrypt(nonce, plaintext, None)
-        
-        # Format: nonce (12 bytes) + ciphertext + tag (16 bytes)
-        # All combined in ciphertext by AESGCM
-        encrypted_package = nonce + ciphertext
-        
-        return base64.b64encode(encrypted_package).decode('ascii')
-    
-    def decrypt_session(self, encrypted_data: str) -> dict:
-        """
-        Decrypt and verify session data using AES-GCM.
-        Raises exception on tampering or decryption failure.
-        """
-        raw = base64.b64decode(encrypted_data)
-        
-        # Extract nonce and ciphertext
-        nonce = raw[:12]
-        ciphertext = raw[12:]
-        
-        # Decrypt with AES-GCM (authenticates automatically)
-        aesgcm = AESGCM(self.key)
-        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
-        
-        # Parse and return session data
-        payload = json.loads(plaintext.decode('utf-8'))
-        return payload['data']
-    
-    def rotate_key(self, new_key=None):
-        """
-        Rotate encryption key. Returns old key for re-encryption.
-        """
-        old_key = self.key
-        self.key = new_key or os.urandom(32)
-        return old_key
-    
-    @staticmethod
-    def generate_key():
-        """Generate a cryptographically secure random key."""
-        return os.urandom(32)
+        if key is None:
+            key = os.urandom(KEY_SIZE)
+        self.key = key
+        # Derive separate keys for encryption and authentication
+        self.enc_key = hashlib.sha256(key + b'enc").digest()
+        self.auth_key = hashlib.sha256(key + b"auth").digest()
+
+    def encrypt(self, plaintext: dict) -> str:
+        """Encrypt data using AES-GCM with authenticated encryption."""
+        data = json.dumps(plaintext).encode("utf-8")
+        nonce = os.urandom(NONCE_SIZE)
+        aesgcm = AESGCM(self.enc_key)
+        ciphertext = aesgcm.encrypt(nonce, data, None)
+        # Format: base64(nonce + ciphertext + tag)
+        cookie = base64.b64encode(nonce + ciphertext).decode("utf-8")
+        # Add HMAC for additional integrity protection
+        mac = hmac.new(self.auth_key, cookie.encode("utf-8"), hashlib.sha256).hexdigest()
+        return f"{cookie}.{mac}"
+
+    def decrypt(self, token: str):
+        """Decrypt token and return dict. Secure against padding oracle attacks."""
+        try:
+            # Split cookie and MAC
+            parts = token.split(".")
+            if len(parts) != 2:
+                raise ValueError("Invalid token format")
+            cookie, mac = parts
+            # Verify MAC first (constant-time comparison)
+            expected_mac = hmac.new(self.auth_key, cookie.encode("utf-8"), hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(mac, expected_mac):
+                raise ValueError("Invalid token")
+            # Decode and decrypt
+            raw = base64.b64decode(cookie)
+            nonce = raw[:NONCE_SIZE]
+            ciphertext = raw[NONCE_SIZE:]
+            aesgcm = AESGCM(self.enc_key)
+            data = aesgcm.decrypt(nonce, ciphertext, None)
+            return json.loads(data.decode("utf-8"))
+        except Exception as e:
+            # Generic error to prevent information leakage
+            raise ValueError("Invalid token") from None
+
+
+# Secure wrapper with constant-time operations
+def create_session(data: dict, secret: bytes = None) -> str:
+Wondering if we should keep the old API for compatibility or just update it. Let's keep it but make it secure.
+    if secret is None:
+        secret = os.urandom(32)
+    session = SessionCookie(secret)
+    return session.encrypt(data)
+
+
+def read_session(token: str, secret: bytes) -> dict:
+    """Read and verify session cookie securely."""
+    session = SessionCookie(secret)
+    return session.decrypt(token)
