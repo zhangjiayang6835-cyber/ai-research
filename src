@@ -1,0 +1,51 @@
+
+import ldap
+import re
+
+def sanitize_ldap_input(user_input):
+    """
+    Sanitize user input to prevent LDAP injection attacks.
+    Removes LDAP special characters and patterns.
+    """
+    if not isinstance(user_input, str):
+        return ""
+    # Remove LDAP special characters: * ( ) \ & | = ! > < ~ ; 
+    sanitized = re.sub(r'[\*\(\)\\&\|=!><~;]', '', user_input)
+    return sanitized.strip()
+
+def authenticate(username, password, ldap_server='ldap://localhost'):
+    """
+    Authenticate user against LDAP server with injection protection.
+    """
+    # Sanitize inputs before using in LDAP query
+    safe_username = sanitize_ldap_input(username)
+    safe_password = sanitize_ldap_input(password)
+    
+    # Validate that required fields are not empty after sanitization
+    if not safe_username or not safe_password:
+        return False
+    
+    # Build the LDAP filter using proper escaping
+    # ldap.filter.escape_filter_chars is the standard way to escape
+    import ldap.filter
+    escaped_username = ldap.filter.escape_filter_chars(safe_username)
+    escaped_password = ldap.filter.escape_filter_chars(safe_password)
+    
+    search_filter = f"(&(uid={escaped_username})(userPassword={escaped_password}))"
+    
+    try:
+        conn = ldap.initialize(ldap_server)
+        conn.set_option(ldap.OPT_REFERRALS, 0)
+        
+        # Perform search with sanitized filter
+        result = conn.search_s(
+            "dc=example,dc=com",
+            ldap.SCOPE_SUBTREE,
+            search_filter
+        )
+        return len(result) > 0
+    except ldap.LDAPError:
+        return False
+    finally:
+        if 'conn' in locals():
+            conn.unbind_s()
