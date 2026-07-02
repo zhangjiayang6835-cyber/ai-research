@@ -6,28 +6,33 @@ import hmac
 
 def secure_compare(a, b):
     """
-    Constant-time comparison function to prevent timing attacks.
-    
-    Compares two strings or bytes in constant time, regardless of
-    how many characters match, to prevent timing side-channel attacks.
-    
-    Args:
-        a: First string or bytes to compare
-        b: Second string or bytes to compare
-    
-    Returns:
-        bool: True if a and b are equal, False otherwise
+    Constant-time comparison to prevent timing attacks.
+    Uses hmac.compare_digest for secure string comparison.
     """
-    # Convert to bytes if strings
+    if not isinstance(a, (str, bytes)):
+        raise TypeError("Inputs must be str or bytes")
+    if not isinstance(b, (str, bytes)):
+        raise TypeError("Inputs must be str or bytes")
+    
+    # Convert str to bytes if necessary
     if isinstance(a, str):
         a = a.encode('utf-8')
     if isinstance(b, str):
         b = b.encode('utf-8')
     
-    # Use hmac.compare_digest for constant-time comparison
-    # This is the recommended approach in Python 3.3+
-    try:
-        return hmac.compare_digest(a, b)
-    except TypeError:
+    return hmac.compare_digest(a, b)
+
+
+# Example vulnerable function that would be replaced
+def vulnerable_compare(secret, user_input):
+    """
+    Vulnerable comparison - DO NOT USE
+    This leaks timing information via early return on mismatch.
+    """
+    if len(secret) != len(user_input):
         return False
+    for i in range(len(secret)):
+        if secret[i] != user_input[i]:
+            return False
+    return True
 print("fix #194")
