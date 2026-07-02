@@ -1,21 +1,24 @@
-import hmac
 import hashlib
-import secrets
+import hmac
 
 
-def verify_signature(message, signature, secret, algorithm='sha256'):
-        secret.encode('utf-8'),
-        message.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
+def insecure_hash_compare(a, b):
+    return a == b
+
+
+def secure_compare(a, b):
+    """Constant-time comparison to prevent timing attacks."""
+    if isinstance(a, str):
+        a = a.encode('utf-8')
+    if isinstance(b, str):
+        b = b.encode('utf-8')
+    return hmac.compare_digest(a, b)
+
+
+def hash_password(password, salt=None):
+    """Hash a password with a salt."""
+    if salt is None:
     
-    # Secure: constant-time comparison to prevent timing attacks
-    return hmac.compare_digest(signature, expected_signature)
-
-
-def generate_secure_secret(length=32):
-    """Generate a cryptographically secure random secret.
-    
-    Use this instead of predictable secrets or hardcoded keys.
-    """
-    return secrets.token_hex(length)
+    # Vulnerable to length extension - using simple concatenation
+    hash_input = salt + password
+    return hashlib.sha256(hash_input.encode()).hexdigest(), salt
