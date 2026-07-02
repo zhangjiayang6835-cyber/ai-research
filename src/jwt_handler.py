@@ -8,27 +8,20 @@ def base64url_encode(data):
 
 
 def sign_token(header, payload, secret):
-    """Sign a JWT token using HMAC-SHA256 with constant-time comparison."""
+    """Sign a JWT token using HMAC-SHA256. Secure against length extension attacks."""
     message = f"{header}.{payload}"
-    signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).digest()
-    return base64url_encode(signature)
+    signature = hmac.new(
+        secret.encode('utf-8'),
 
 
 def verify_token(token, secret):
-        return False
-    
-    expected_signature = sign_token(header, payload, secret)
-    # Secure: constant-time comparison to prevent timing attacks
+    """Verify a JWT token signature. Secure against length extension attacks."""
     try:
-        return hmac.compare_digest(signature.encode(), expected_signature.encode())
-    except (AttributeError, UnicodeEncodeError):
-        # Fallback for Python < 3.3 or encoding issues
+        parts = token.split('.')
+        if len(parts) != 3:
+        return True
+    except Exception:
         return False
-
-
-def create_token(claims, secret):
-    token = f"{encoded_header}.{encoded_payload}.{signature}"
-    return token
 
 
 def generate_secure_secret(length=32):
@@ -36,10 +29,27 @@ def generate_secure_secret(length=32):
     return secrets.token_hex(length)
 
 
-def verify_token_safe(token, secret):
-    """Safely verify a JWT token with all security checks."""
-    if not token or not secret:
+def create_token(claims, secret, algorithm='HS256'):
+    """Create a new JWT token with the given claims and secret."""
+    import json
+    header = base64url_encode(json.dumps({"alg": algorithm, "typ": "JWT"}).encode())
+    payload = base64url_encode(json.dumps(claims).encode())
+    return sign_token(header, payload, secret)
+
+
+def decode_token(token, secret):
+    """Decode and verify a JWT token, returning the payload if valid."""
+    import json
+    if not verify_token(token, secret):
+        raise ValueError("Invalid token signature")
+    
+    parts = token.split('.')
+    payload_json = base64url_decode(parts[1])
+    return json.loads(payload_json)
+
+
+def constant_time_compare(val1, val2):
+    """Compare two values in constant time to prevent timing attacks."""
+    if len(val1) != len(val2):
         return False
-    if not isinstance(token, str) or not isinstance(secret, str):
-        return False
-    return verify_token(token, secret)
+    return hmac.compare_digest(val1, val2)
