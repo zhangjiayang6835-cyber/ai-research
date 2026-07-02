@@ -1,157 +1,157 @@
  ```diff
 --- a/k8s_rbac_validator.py
 +++ b/k8s_rbac_validator.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python3
-+#!/usr/bin/env python3
+@@ -1,12 +1,85 @@
+ #!/usr/bin/env python3
  """
- Kubernetes RBAC Security Validator
+-Kubernetes RBAC Security Validator
+-Validates API server configurations to prevent RBAC bypass vulnerabilities.
++Kubernetes RBAC Security Validator and Fixer
++Validates and fixes API server configurations to prevent RBAC bypass vulnerabilities.
+ """
  
-@@ -10,6 +10,7 @@
  import json
- import subprocess
  import sys
++import os
 +import re
- from typing import Dict, List, Optional, Tuple
++from pathlib import Path
++
++
++def get_kube_apiserver_manifest_path():
++    """Find the kube-apiserver manifest path on common locations."""
++    common_paths = [
++        "/etc/kubernetes/manifests/kube-apiserver.yaml",
++        "/etc/kubernetes/manifests/kube-apiserver.yml",
++        "/var/lib/rancher/rke2/agent/pod-manifests/kube-apiserver.yaml",
++        "/var/lib/rancher/k3s/server/manifests/kube-apiserver.yaml",
++    ]
++    for path in common_paths:
++        if os.path.exists(path):
++            return path
++    return None
++
++
++def read_apiserver_manifest(path=None):
++    """Read the kube-apiserver manifest."""
++    if path is None:
++        path = get_kube_apiserver_manifest_path()
++    if not path or not os.path.exists(path):
++        return None
++    with open(path, 'r') as f:
++        return f.read()
++
++
++def fix_apiserver_manifest(manifest_content):
++    """
++    Fix the kube-apiserver manifest to enable and enforce RBAC.
++    Returns the fixed manifest content.
++    """
++    if not manifest_content:
++        return None
++    
++    lines = manifest_content.split('\n')
++    fixed_lines = []
++    in_command = False
++    command_idx = -1
++    
++    for i, line in enumerate(lines):
++        fixed_lines.append(line)
++        if 'command:' in line:
++            in_command = True
++            command_idx = i
++        elif in_command and (line.strip().startswith('- ') or line.strip().startswith('--')):
++            continue
++        elif in_command and not line.startswith(' '):
++            in_command = False
++    
++    # Rebuild with proper RBAC flags
++    if command_idx >= 0:
++        new_lines = fixed_lines[:command_idx + 1]
++        new_lines.append('    - --authorization-mode=RBAC')
++        new_lines.append('    - --enable-admission-plugins=NodeRestriction,RBAC')
++        new_lines.append('    - --anonymous-auth=false')
++        new_lines.append('    - --insecure-port=0')
++        new_lines.append('    - --secure-port=6443')
++        new_lines.append('    - --tls-cert-file=/etc/kubernetes/pki/apiserver.crt')
++        new_lines.append('    - --tls-private-key-file=/etc/kubernetes/pki/apiserver.key')
++        new_lines.append('    - --client-ca-file=/etc/kubernetes/pki/ca.crt')
++        new_lines.append('    - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt')
++        new_lines.append('    - --enable-bootstrap-token-auth=false')
++        new_lines.append('    - --service-account-lookup=true')
++        new_lines.append('    - --service-account-key-file=/etc/kubernetes/pki/sa.pub')
++        new_lines.append('    - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt')
++        new_lines.append('    - --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key')
++        new_lines.append('    - --kubelet-certificate-authority=/etc/kubernetes/pki/ca.crt')
++        return '\n'.join(new_lines)
++    
++    return manifest_content
  
  
-@@ -17,6 +18,7 @@
-     """Represents a security misconfiguration in Kubernetes RBAC."""
+ def validate_rbac_config(config):
+@@ -14,6 +87,10 @@ def validate_rbac_config(config):
+     Validate Kubernetes API server configuration for RBAC bypass vulnerabilities.
+     Returns a list of issues found.
+     """
++    if config is None:
++        return [{"severity": "CRITICAL", "issue": "Could not read API server configuration. Ensure you have access to /etc/kubernetes/manifests/"}]
++    
++    config_str = str(config) if not isinstance(config, str) else config
+     issues = []
      
-     def __init__(self, name: str, severity: str, description: str, 
-+                 remediation: str = "", check_func=None):
-                  remediation: str = "", check_func=None):
-         self.name = name
-         self.severity = severity
-@@ -25,6 +27,7 @@ def __init__(self, name: str, severity: str, description: str,
-         self.check_func = check_func
- 
- 
-+class K8sRBACValidator:
- class K8sRBACValidator:
-     """Validates Kubernetes cluster for RBAC misconfigurations."""
+     # Check for anonymous auth enabled
+@@ -21,6 +98,12 @@ def validate_rbac_config(config):
+         issues.append({
+             "severity": "HIGH",
+             "issue": "Anonymous authentication is enabled. Set --anonymous-auth=false"
++        })
++    
++    # Check for insecure port enabled
++    if '--insecure-port=0' not in config_str and '--insecure-port' in config_str:
++        issues.append({
++            "severity": "CRITICAL",
++            "issue": "Insecure port is enabled. Set --insecure-port=0 to disable unencrypted HTTP"
+         })
      
-@@ -32,6 +35,7 @@ def __init__(self, kubeconfig: Optional[str] = None):
-         self.kubeconfig = kubeconfig
-         self.vulnerabilities: List[Vulnerability] = []
-         self._setup_checks()
-+        self._api_server_url: Optional[str] = None
+     # Check for RBAC in authorization modes
+@@ -28,6 +111,12 @@ def validate_rbac_config(config):
+         issues.append({
+             "severity": "CRITICAL",
+             "issue": "RBAC authorization is not enabled. Add RBAC to --authorization-mode"
++        })
++    
++    # Check for AlwaysAllow authorization mode (bypasses all auth)
++    if 'AlwaysAllow' in config_str:
++        issues.append({
++            "severity": "CRITICAL",
++            "issue": "AlwaysAllow authorization mode is enabled. This bypasses ALL authorization checks. Remove it immediately."
+         })
      
-     def _setup_checks(self):
-         """Initialize all security checks."""
-@@ -41,6 +45,7 @@ def _setup_checks(self):
-             self._check_anonymous_auth,
-             self._check_abac_mode,
-             self._check_weak_kubelet,
-+            self._check_api_server_rbac_bypass,
-         ]
-     
-     def run_command(self, cmd: List[str]) -> Tuple[int, str, str]:
-@@ -48,6 +53,7 @@ def run_command(self, cmd: List[str]) -> Tuple[int, str, str]:
-         try:
-             result = subprocess.run(
-                 cmd, capture_output=True, text=True, timeout=30
-+            )
-             )
-             return result.returncode, result.stdout, result.stderr
-         except subprocess.TimeoutExpired:
-@@ -55,6 +61,7 @@ def run_command(self, cmd: List[str]) -> Tuple[int, str, str]:
-         except FileNotFoundError:
-             return 1, "", "kubectl not found"
-     
-+    def _get_api_server_config(self) -> Dict:
-     def _get_api_server_config(self) -> Dict:
-         """Fetch API server configuration from the cluster."""
-         # Try to get API server pod configuration
-@@ -62,6 +69,7 @@ def _get_api_server_config(self) -> Dict:
-             "kubectl", "get", "pods", "-n", "kube-system",
-             "-l", "component=kube-apiserver",
-             "-o", "json"
-+        ])
-         ])
-         
-         if code != 0:
-@@ -69,6 +77,7 @@ def _get_api_server_config(self) -> Dict:
-         
-         try:
-             data = json.loads(stdout)
-+            return data
-             return data
-         except json.JSONDecodeError:
-             return {}
-@@ -76,6 +85,7 @@ def _get_api_server_config(self) -> Dict:
-     def _check_anonymous_auth(self) -> Optional[Vulnerability]:
-         """Check if anonymous authentication is enabled."""
-         config = self._get_api_server_config()
-+        if not config:
-         if not config:
-             return None
-         
-@@ -83,6 +93,7 @@ def _check_anonymous_auth(self) -> Optional[Vulnerability]:
-         for item in config.get("items", []):
-             containers = item.get("spec", {}).get("containers", [])
-             for container in containers:
-+                args = container.get("args", [])
-                 args = container.get("args", [])
-                 for arg in args:
-                     if "--anonymous-auth=true" in arg:
-@@ -91,6 +102,7 @@ def _check_anonymous_auth(self) -> Optional[Vulnerability]:
-                             "high",
-                             "Anonymous authentication is enabled on the API server. "
-                             "This allows unauthenticated access to the API.",
-+                            "Set --anonymous-auth=false on the API server."
-                             "Set --anonymous-auth=false on the API server."
-                         )
-         return None
-@@ -98,6 +110,7 @@ def _check_anonymous_auth(self) -> Optional[Vulnerability]:
-     def _check_abac_mode(self) -> Optional[Vulnerability]:
-         """Check if ABAC authorization mode is used (deprecated and insecure)."""
-         config = self._get_api_server_config()
-+        if not config:
-         if not config:
-             return None
-         
-@@ -105,6 +118,7 @@ def _check_abac_mode(self) -> Optional[Vulnerability]:
-         for item in config.get("items", []):
-             containers = item.get("spec", {}).get("containers", [])
-             for container in containers:
-+                args = container.get("args", [])
-                 args = container.get("args", [])
-                 for arg in args:
-                     if "--authorization-mode=" in arg and "ABAC" in arg:
-@@ -113,6 +127,7 @@ def _check_abac_mode(self) -> Optional[Vulnerability]:
-                             "high",
-                             "ABAC authorization mode is enabled. RBAC should be used instead. "
-                             "ABAC is deprecated and provides coarse-grained access control.",
-+                            "Switch to --authorization-mode=RBAC and remove ABAC."
-                             "Switch to --authorization-mode=RBAC and remove ABAC."
-                         )
-         return None
-@@ -120,6 +135,7 @@ def _check_abac_mode(self) -> Optional[Vulnerability]:
-     def _check_weak_kubelet(self) -> Optional[Vulnerability]:
-         """Check if kubelet has weak authentication."""
-         # Check kubelet configuration
-+        code, stdout, stderr = self.run_command([
-         code, stdout, stderr = self.run_command([
-             "kubectl", "get", "configmap", "kubelet-config", "-n", "kube-system",
-             "-o", "json"
-@@ -129,6 +145,7 @@ def _check_weak_kubelet(self) -> Optional[Vulnerability]:
-             return None
-         
-         try:
-+            data = json.loads(stdout)
-             data = json.loads(stdout)
-             # Check for weak settings
-             # This is a simplified check
-@@ -136,6 +153,7 @@ def _check_weak_kubelet(self) -> Optional[Vulnerability]:
-         except json.JSONDecodeError:
-             return None
-     
-+    def _check_api_server_rbac_bypass(self) -> Optional[Vulnerability]:
-     def _check_api_server_rbac_bypass(self) -> Optional[Vulnerability]:
-         """
-         Check for API server misconfigurations that allow RBAC bypass.
-@@ -143,6 +161,7 @@ def _check_api_server_rbac_bypass(self) -> Optional[Vulnerability]:
-         This checks for:
-         1. --insecure-port being set to non-zero
-         2. --insecure
+     # Check for insecure bind address
+@@ -36,6 +125,30 @@ def validate_rbac_config(config):
+             "severity": "CRITICAL",
+             "issue": "API server is bound to insecure address 0.0.0.0 without proper authentication"
+         })
++    
++    # Check for missing admission plugins
++    if '--enable-admission-plugins' not in config_str:
++        issues.append({
++            "severity": "HIGH",
++            "issue": "Admission plugins not configured. Enable NodeRestriction and RBAC admission plugins"
++        })
++    
++    # Check for insecure HTTP enabled
++    if '--insecure-bind-address' in config_str:
++        issues.append({
++            "severity": "CRITICAL",
++            "issue": "Insecure HTTP bind address is configured. Remove --insecure-bind-address flag"
++        })
++    
++    # Check for token auth file (bypasses RBAC)
++    if '--token-auth-file' in config_str:
++        issues.append({
++            "severity": "CRITICAL",
++            "issue": "Static token authentication file is configured. This bypasses RBAC. Use service accounts instead"
++        })
++    
++    # Check for ABAC mode (less secure than RBAC)
++    if 'ABAC' in config_str and 'RBAC' not in
