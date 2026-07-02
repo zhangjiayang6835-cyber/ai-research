@@ -1,33 +1,50 @@
-"""
-sidecar_security.py — Microservice Mesh Sidecar Injection Protection
+# fix-sidecar-injection.py - Fixed constant-time comparison to prevent timing attacks
 
-漏洞背景:
-- 在K8s服务网格（如Istio、Linkerd）中，sidecar代理自动注入到pod
-- 攻击者可利用注入机制插入恶意sidecar，拦截流量
-- 修复需要: 强制mTLS、验证配置来源、限制注入授权
-
-本模块提供运行时验证和配置硬化建议。
-"""
-
-import hashlib
 import hmac
-import json
-from dataclasses import dataclass
-from typing import Set, Optional
+import hashlib
+- 在K8s服务网格（如Istio、Linkerd）中，sidecar代理自动注入到pod
+
+def verify_signature(secret, data, signature):
+    """
+    Verify signature using secure constant-time comparison.
+    Fixed implementation to prevent timing attacks.
+    """
+    expected = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
+    
+    # SECURE: Use hmac.compare_digest for constant-time comparison
+    # This prevents timing attacks by ensuring the comparison takes
+    # the same amount of time regardless of where the strings differ
+    return hmac.compare_digest(expected, signature)
 
 
-@dataclass
-class SidecarConfig:
-    """Sidecar注入配置验证"""
-    namespace: str
-    service_account: str
-    allowed_injectors: Set[str]  # 允许的注入器标识
-    require_mtls: bool = True
+def verify_signature_bytes(secret, data, signature):
+    """
+    Verify signature using secure constant-time comparison (bytes version).
+    """
+    expected = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
+    
+    # SECURE: Use hmac.compare_digest for constant-time comparison
+    # Both arguments must be of the same type (str or bytes)
+    if isinstance(signature, bytes):
+        return hmac.compare_digest(expected.encode('utf-8'), signature)
+    return hmac.compare_digest(expected, signature)
+
+
+def process_webhook(data, signature, secret="default_secret"):
+    """
+
+    """
+    if not verify_signature(secret, data, signature):
+        raise ValueError("Invalid signature")
+    return json.loads(data)
+
+if __name__ == "__main__":
+    secret = "my_secret_key"
     allowed_ips: Set[str] = None  # 允许的sidecar IP范围
-
-    def __post_init__(self):
-        if self.allowed_ips is None:
-            self.allowed_ips = {"10.0.0.0/8"}  # 网格内部IP
+    signature = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
+    
+    result = process_webhook(data, signature, secret)
+    print(f"Webhook processed: {result}")
 
 
 class SidecarSecurityEnforcer:
@@ -199,99 +216,4 @@ if __name__ == "__main__":
         namespace="production",
         sidecar_ip="10.1.2.3"
     )
-#!/usr/bin/env python3
-"""
-Secure constant-time comparison implementation to prevent side-channel timing attacks.
-
-This module provides a timing-safe comparison function that avoids early returns
-and uses constant-time operations regardless of where the strings differ.
-"""
-
-import hmac
-
-
-def secure_compare(a: str | bytes, b: str | bytes) -> bool:
-    """
-    Compare two strings or bytes in constant time to prevent timing attacks.
-    
-    This function uses hmac.compare_digest which is designed to be
-    constant-time regardless of the input values.
-    
-    Args:
-        a: First string or bytes to compare
-        b: Second string or bytes to compare
-        
-    Returns:
-        bool: True if a and b are equal, False otherwise
-    """
-    # Convert strings to bytes if needed
-    if isinstance(a, str):
-        a = a.encode('utf-8')
-    if isinstance(b, str):
-        b = b.encode('utf-8')
-    
-    return hmac.compare_digest(a, b)
-
-
-def insecure_compare(a: str, b: str) -> bool:
-    """
-    INSECURE: Vulnerable to timing attacks due to early return.
-    DO NOT USE IN PRODUCTION.
-    """
-    if len(a) != len(b):
-        return False
-    
-    for i in range(len(a)):
-        if a[i] != b[i]:
-            return False  # Early return leaks timing information!
-    
-    return True
-
-
-if __name__ == "__main__":
-    # Demonstration of the secure comparison
-    secret_token = "my_secret_api_key_12345"
-    user_provided = "my_secret_api_key_12345"
-    attacker_guess = "my_secret_api_key_12346"
-    
-    print("Secure comparison (equal):", secure_compare(secret_token, user_provided))
-    print("Secure comparison (different):", secure_compare(secret_token, attacker_guess))
-    
-    # Demonstrate that timing is constant regardless of where mismatch occurs
-    import time
-    
-    test_secret = "a" * 1000
-    test_match = "a" * 1000
-    test_mismatch_early = "b" + "a" * 999
-    test_mismatch_late = "a" * 999 + "b"
-    
-    # Warm up
-    for _ in range(100):
-        secure_compare(test_secret, test_match)
-        secure_compare(test_secret, test_mismatch_early)
-        secure_compare(test_secret, test_mismatch_late)
-    
-    # Time comparisons
-    iterations = 10000
-    
-    start = time.perf_counter()
-    for _ in range(iterations):
-        secure_compare(test_secret, test_match)
-    time_match = time.perf_counter() - start
-    
-    start = time.perf_counter()
-    for _ in range(iterations):
-        secure_compare(test_secret, test_mismatch_early)
-    time_early = time.perf_counter() - start
-    
-    start = time.perf_counter()
-    for _ in range(iterations):
-        secure_compare(test_secret, test_mismatch_late)
-    time_late = time.perf_counter() - start
-    
-    print(f"\nTiming results ({iterations} iterations):")
-    print(f"  Match:        {time_match:.4f}s")
-    print(f"  Early diff:   {time_early:.4f}s")
-    print(f"  Late diff:    {time_late:.4f}s")
-    print(f"\nAll times similar? {'Yes - constant time!' if max(time_match, time_early, time_late) - min(time_match, time_early, time_late) < 0.1 else 'No - timing variation detected'}")
     print(f"Sidecar injection valid: {result}")
