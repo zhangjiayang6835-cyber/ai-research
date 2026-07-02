@@ -8,7 +8,7 @@ def base64url_encode(data):
     return base64.urlsafe_b64decode(data + b'=' * (-len(data) % 4))
 
 def sign_token(header, payload, secret):
-    # Fixed: Use proper HMAC with SHA-256 to prevent length extension attacks
+    # Fixed: Use proper HMAC with SHA-256aise to prevent length extension attacks
     message = f"{header}.{payload}".encode()
     signature = hmac.new(secret, message, hashlib.sha256).hexdigest()
     return signature
