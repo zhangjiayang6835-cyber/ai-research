@@ -1,48 +1,54 @@
 import requests
 import ipaddress
-from urllib.parse import urlparse
-
-def fetch_pdf_content(url):
-1. 只允许HTTPS协议
-    Fetches content from a given URL to generate a PDF.
-    Vulnerable to SSRF - no validation on the URL.
-    """
-    # Parse the URL
-    parsed = urlparse(url)
-    
-    # Validate scheme
-    if parsed.scheme not in ('http', 'https'):
-        raise ValueError("Only HTTP and HTTPS URLs are allowed")
-    
-    # Validate hostname
-    hostname = parsed.hostname
-    if not hostname:
-        raise ValueError("Invalid URL: no hostname provided")
-    
-    # Block private/internal IP addresses and localhost
-    try:
-        # Check if it's an IP address
-        ip = ipaddress.ip_address(hostname)
-        if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
-            raise ValueError("Access to internal IP addresses is not allowed")
-    except ValueError:
-        # Not an IP address, check for localhost and internal hostnames
-        if hostname in ('localhost', '127.0.0.1', '0.0.0.0', '::1') or hostname.endswith('.local') or hostname.endswith('.internal'):
-            raise ValueError("Access to internal addresses is not allowed")
-    
-    response = requests.get(url, timeout=10)
-    return response.content
-该实现可直接集成到原有项目中，替换脆弱的requests调用。
-"""
-
-import ipaddress
-import socket
-import ssl
-import urllib.error
 import urllib.parse
-import urllib.request
+from flask import Flask, request, send_file
+from reportlab.lib.pagesizes import letter
+1. 只允许HTTPS协议
+2. 强制hostname白名单验证
+3. 解析并验证目标IP不在私有/保留范围
+4. 禁止重定向（避免开放重定向链）
+PDF_STORAGE_PATH = "/tmp/generated.pdf"
 
 
+def is_private_url(url):
+    """Check if URL resolves to a private/internal IP address to prevent SSRF."""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return True
+        
+        # Check if hostname is an IP address
+        try:
+            ip = ipaddress.ip_address(hostname)
+            # Block private, loopback, reserved, and multicast addresses
+            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast:
+                return True
+        except ValueError:
+            # Not an IP, resolve it
+            import socket
+            resolved_ip = ipaddress.ip_address(socket.getaddrinfo(hostname, None)[0][4][0])
+            if resolved_ip.is_private or resolved_ip.is_loopback or resolved_ip.is_reserved or resolved_ip.is_multicast:
+                return True
+        return False
+    except Exception:
+        return True
+
+
+@app.route("/generate-pdf", methods=["POST"])
+def generate_pdf():
+    data = request.get_json()
+import socket
+    if not url:
+        return {"error": "Missing 'url' parameter"}, 400
+    
+    # Prevent SSRF by blocking internal/private URLs
+    if is_private_url(url):
+        return {"error": "Access to internal or private URLs is not allowed"}, 403
+    
+    try:
+        # Fetch external content to include in PDF
+        response = requests.get(url, timeout=10)
 ALLOWED_HOSTS = frozenset({
     "api.example.com",
     "assets.example.com",
