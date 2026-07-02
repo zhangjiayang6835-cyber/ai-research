@@ -1,50 +1,46 @@
-# fix-sidecar-injection.py - Fixed constant-time comparison to prevent timing attacks
-
 import hmac
-import hashlib
+import secrets
+
+
+def insecure_compare(a, b):
 - 在K8s服务网格（如Istio、Linkerd）中，sidecar代理自动注入到pod
+    return a == b
 
-def verify_signature(secret, data, signature):
+
+def constant_time_compare(val1, val2):
     """
-    Verify signature using secure constant-time comparison.
-    Fixed implementation to prevent timing attacks.
+    Constant-time comparison to prevent timing attacks.
+    Uses hmac.compare_digest for secure comparison of strings or bytes.
     """
-    expected = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
-    
-    # SECURE: Use hmac.compare_digest for constant-time comparison
-    # This prevents timing attacks by ensuring the comparison takes
-    # the same amount of time regardless of where the strings differ
-    return hmac.compare_digest(expected, signature)
+    if isinstance(val1, str):
+        val1 = val1.encode('utf-8')
+    if isinstance(val2, str):
+        val2 = val2.encode('utf-8')
+    return hmac.compare_digest(val1, val2)
 
 
-def verify_signature_bytes(secret, data, signature):
-    """
-    Verify signature using secure constant-time comparison (bytes version).
-    """
-    expected = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
-    
-    # SECURE: Use hmac.compare_digest for constant-time comparison
-    # Both arguments must be of the same type (str or bytes)
-    if isinstance(signature, bytes):
-        return hmac.compare_digest(expected.encode('utf-8'), signature)
-    return hmac.compare_digest(expected, signature)
+def verify_signature(received_sig, expected_sig):
+    return constant_time_compare(received_sig, expected_sig)
+
+import hashlib
+import hmac
+import json
+from dataclasses import dataclass
+from typing import Set, Optional
 
 
-def process_webhook(data, signature, secret="default_secret"):
-    """
-
-    """
-    if not verify_signature(secret, data, signature):
-        raise ValueError("Invalid signature")
-    return json.loads(data)
-
-if __name__ == "__main__":
-    secret = "my_secret_key"
+@dataclass
+class SidecarConfig:
+    """Sidecar注入配置验证"""
+    namespace: str
+    service_account: str
+    allowed_injectors: Set[str]  # 允许的注入器标识
+    require_mtls: bool = True
     allowed_ips: Set[str] = None  # 允许的sidecar IP范围
-    signature = hmac.new(secret.encode(), data.encode(), hashlib.sha256).hexdigest()
-    
-    result = process_webhook(data, signature, secret)
-    print(f"Webhook processed: {result}")
+
+    def __post_init__(self):
+        if self.allowed_ips is None:
+            self.allowed_ips = {"10.0.0.0/8"}  # 网格内部IP
 
 
 class SidecarSecurityEnforcer:
