@@ -1,167 +1,173 @@
  ```diff
---- a/eval-engine
-+++ b/eval-engine
-@@ -1 +1,200 @@
-+#!/usr/bin/env python3
-+"""
-+WebAssembly Memory Corruption Sandbox Escape Fix
-+
-+This module provides a secure WebAssembly execution environment that prevents
-+memory corruption and sandbox escape vulnerabilities.
-+"""
-+
-+import os
-+import sys
+--- a/eval-engine/wasm_sandbox.py
++++ b/eval-engine/wasm_sandbox.py
+@@ -1,4 +1,4 @@
+-"""
++﻿"""
+ WebAssembly Sandbox for secure code execution.
+ 
+ This module provides a sandboxed environment for executing WebAssembly
+@@ -15,6 +15,7 @@
+ import tempfile
+ import hashlib
+ import threading
 +import struct
-+import mmap
-+import ctypes
-+from typing import Optional, List, Tuple, Dict, Any
-+from dataclasses import dataclass
-+from enum import Enum, auto
-+
-+
-+class MemoryProtectionError(Exception):
-+    """Raised when a memory protection violation is detected."""
-+    pass
-+
-+
-+class SandboxEscapeError(Exception):
-+    """Raised when sandbox escape attempt is detected."""
-+    pass
-+
-+
-+class MemoryRegionType(Enum):
-+    """Types of memory regions with different protection levels."""
-+    CODE = auto()      # Executable code (read-only after load)
-+    DATA = auto()      # Mutable data (read-write, no execute)
-+    STACK = auto()     # Stack (read-write, bounds checked)
-+    HEAP = auto()      # Heap (read-write, bounds checked)
-+    GUARD = auto()     # Guard page (no access)
-+
-+
-+@dataclass(frozen=True)
-+class MemoryRegion:
-+    """Represents a protected memory region."""
-+    start: int
-+    size: int
-+    region_type: MemoryRegionType
-+    permissions: int  # mmap.PROT_*
-+    
-+    @property
-+    def end(self) -> int:
-+        return self.start + self.size
-+    
-+    def contains(self, addr: int, size: int = 1) -> bool:
-+        """Check if address range is within this region."""
-+        return self.start <= addr and addr + size <= self.end
-+
-+
-+class SecureMemoryManager:
-+    """
-+    Secure memory manager with protection against memory corruption.
-+    
-+    Features:
-+    - Guard pages around sensitive regions
-+    - Strict bounds checking on all memory accesses
-+    - Separation of code and data (W^X policy)
-+    - Canary values for stack protection
-+    """
-+    
-+    PAGE_SIZE = 4096
-+    GUARD_PAGE_COUNT = 1  # Number of guard pages
-+    STACK_CANARY = 0xDEADBEEFCAFEBABE
-+    MAX_MEMORY_SIZE = 2 ** 32  # 4GB max for 32-bit WASM
-+    
-+    def __init__(self, memory_size: int = 16 * 1024 * 1024,  # 16MB default
-+                 stack_size: int = 1024 * 1024,  # 1MB stack
-+                 enable_guard_pages: bool = True):
-+        self._memory_size = self._align_up(memory_size)
-+        self._stack_size = self._align_up(stack_size)
-+        self._enable_guard_pages = enable_guard_pages
+ from typing import Dict, Any, Optional, Callable, List, Union
+ from dataclasses import dataclass
+ from enum import Enum
+@@ -45,6 +46,12 @@
+     "wasm_memory_limit": 128 * 1024 * 1024,  # 128MB max memory
+     "wasm_execution_timeout": 30,  # 30 seconds
+     "wasm_max_module_size": 10 * 1024 * 1024,  # 10MB max module size
++    "wasm_max_memory_pages": 2048,  # ~128MB at 64KB per page
++    "wasm_max_table_size": 100000,
++    "wasm_max_globals": 10000,
++    "wasm_max_functions": 100000,
++    "wasm_max_call_stack": 10000,
++    "wasm_strict_validation": True,
+ }
+ 
+ # Thread-local storage for sandbox state
+@@ -52,6 +59,7 @@
+ 
+ 
+ class SandboxError(Exception):
++    """Base exception for sandbox errors."""
+     pass
+ 
+ 
+@@ -61,6 +69,7 @@ class SandboxError(Exception):
+     MEMORY_LIMIT_EXCEEDED = "memory_limit_exceeded"
+     STACK_OVERFLOW = "stack_overflow"
+     ILLEGAL_INSTRUCTION = "illegal_instruction"
++    MEMORY_CORRUPTION = "memory_corruption"
+     SANDBOX_VIOLATION = "sandbox_violation"
+     TIMEOUT = "timeout"
+     VALIDATION_ERROR = "validation_error"
+@@ -68,6 +77,7 @@ class SandboxError(Exception):
+ 
+ @dataclass
+ class ExecutionResult:
++    """Result of sandboxed execution."""
+     success: bool
+     return_value: Any
+     stdout: str
+@@ -79,6 +89,7 @@ class ExecutionResult:
+ 
+ @dataclass
+ class MemoryRegion:
++    """Represents a memory region with bounds checking."""
+     start: int
+     size: int
+     permissions: str  # 'r', 'w', 'x', 'rw', 'rx', 'rwx'
+@@ -87,6 +98,7 @@ class MemoryRegion:
+ 
+ @dataclass
+ class SandboxedMemory:
++    """Sandboxed memory with bounds checking and guard pages."""
+     data: bytearray
+     size: int
+     regions: List[MemoryRegion]
+@@ -94,6 +106,7 @@ class SandboxedMemory:
+ 
+ class WasmValidator:
+     """Validates WebAssembly modules before execution."""
++    MAX_WASM_SECTION_SIZE = 0x7FFFFFFF  # Prevent integer overflow in section parsing
+     
+     def __init__(self, config: Optional[Dict[str, Any]] = None):
+         self.config = {**DEFAULT_CONFIG, **(config or {})}
+@@ -101,6 +114,10 @@ def __init__(self, config: Optional[Dict[str, Any]] = None):
+     def validate(self, wasm_bytes: bytes) -> bool:
+         """
+         Validate a WebAssembly module.
 +        
-+        # Track allocated regions
-+        self._regions: List[MemoryRegion] = []
-+        self._memory: Optional[mmap.mmap] = None
-+        self._base_addr: int = 0
++        Performs strict validation to prevent memory corruption and
++        sandbox escape vulnerabilities.
 +        
-+        # Stack tracking
-+        self._stack_top: int = 0
-+        self._stack_canary_locations: Dict[int, int] = {}
+         Returns True if valid, raises SandboxError otherwise.
+         """
+         if len(wasm_bytes) > self.config["wasm_max_module_size"]:
+@@ -108,6 +125,10 @@ def validate(self, wasm_bytes: bytes) -> bool:
+         
+         # Check magic number and version
+         if len(wasm_bytes) < 8:
++            raise SandboxError(
++                SandboxErrorType.VALIDATION_ERROR,
++                "WASM module too small for header"
++            )
+         magic = wasm_bytes[:4]
+         version = wasm_bytes[4:8]
+         
+@@ -117,6 +138,10 @@ def validate(self, wasm_bytes: bytes) -> bool:
+                 "Invalid WebAssembly magic number or version"
+             )
+         
++        # Validate section structure to prevent memory corruption
++        if self.config.get("wasm_strict_validation", True):
++            self._validate_sections(wasm_bytes)
 +        
-+        # Initialize memory
-+        self._initialize_memory()
-+    
-+    def _align_up(self, size: int, alignment: int = PAGE_SIZE) -> int:
-+        """Align size up to page boundary."""
-+        return (size + alignment - 1) & ~(alignment - 1)
-+    
-+    def _initialize_memory(self) -> None:
-+        """Initialize secure memory with guard pages."""
-+        total_size = self._memory_size
-+        guard_size = 0
+         # Additional validation can be added here
+         # For now, we rely on the runtime to validate the module
+         
+@@ -125,6 +150,75 @@ def validate(self, wasm_bytes: bytes) -> bool:
+     def _check_magic(self, magic: bytes, version: bytes) -> bool:
+         return magic == b'\x00asm' and version in [b'\x01\x00\x00\x00']
+     
++    def _validate_sections(self, wasm_bytes: bytes) -> None:
++        """Validate WASM section structure to prevent memory corruption."""
++        idx = 8  # Skip header
 +        
-+        if self._enable_guard_pages:
-+            guard_size = self.PAGE_SIZE * self.GUARD_PAGE_COUNT
-+            total_size += guard_size * 2
-+        
-+        # Create anonymous memory mapping
-+        self._memory = mmap.mmap(
-+            -1,
-+            total_size,
-+            prot=mmap.PROT_NONE,  # Start with no access
-+            flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS
-+        )
-+        
-+        self._base_addr = ctypes.c_void_p.from_buffer(self._memory).value
-+        if self._base_addr is None:
-+            raise MemoryProtectionError("Failed to get base address")
-+        
-+        # Set up main memory region (without guard pages)
-+        memory_start = self._base_addr + guard_size if self._enable_guard_pages else self._base_addr
-+        
-+        # Make main memory readable and writable (but not executable)
-+        main_prot = mmap.PROT_READ | mmap.PROT_WRITE
-+        
-+        # Use mprotect to set permissions on main region
-+        self._mprotect(memory_start, self._memory_size, main_prot)
-+        
-+        # Add regions
-+        self._regions.append(MemoryRegion(
-+            memory_start,
-+            self._memory_size,
-+            MemoryRegionType.DATA,
-+            main_prot
-+        ))
-+        
-+        # Initialize stack at the top of memory (grows down)
-+        self._stack_top = memory_start + self._memory_size
-+        self._initialize_stack_canary()
-+    
-+    def _mprotect(self, addr: int, size: int, prot: int) -> None:
-+        """Wrapper for mprotect system call."""
-+        try:
-+            # Use ctypes to call mprotect
-+            libc = ctypes.CDLL(None)
-+            result = libc.mprotect(addr, size, prot)
-+            if result != 0:
-+                raise MemoryProtectionError(f"mprotect failed for address {addr:#x}")
-+        except Exception as e:
-+            raise MemoryProtectionError(f"Memory protection error: {e}")
-+    
-+    def _initialize_stack_canary(self) -> None:
-+        """Initialize stack canary for overflow detection."""
-+        canary_addr = self._stack_top - 8  # 64-bit canary
-+        self._write_u64(canary_addr, self.STACK_CANARY)
-+        self._stack_canary_locations[canary_addr] = self.STACK_CANARY
-+    
-+    def _check_canary(self) -> None:
-+        """Verify stack canary hasn't been corrupted."""
-+        for addr, expected in self._stack_canary_locations.items():
-+            actual = self._read_u64(addr)
-+            if actual != expected:
-+                raise MemoryProtectionError(
-+                    f"Stack canary corrupted at {addr:#x}: "
-+                    f"expected {expected:#x}, got {actual:#x}"
++        while idx < len(wasm_bytes):
++            if idx + 1 > len(wasm_bytes):
++                raise SandboxError(
++                    SandboxErrorType.VALIDATION_ERROR,
++                    "Truncated section header"
 +                )
++            
++            section_id = wasm_bytes[idx]
++            idx += 1
++            
++            # Read section size (LEB128)
++            section_size, bytes_read = self._read_leb128(wasm_bytes, idx)
++            if section_size < 0 or section_size > self.MAX_WASM_SECTION_SIZE:
++                raise SandboxError(
++                    SandboxErrorType.VALIDATION_ERROR,
++                    f"Invalid section size: {section_size}"
++                )
++            
++            idx += bytes_read
++            
++            if idx + section_size > len(wasm_bytes):
++                raise SandboxError(
++                    SandboxErrorType.VALIDATION_ERROR,
++                    "Section extends past end of module"
++                )
++            
++            # Validate memory section specifically
++            if section_id == 5:  # Memory section
++                self._validate_memory_section(wasm_bytes, idx, section_size)
++            elif section_id == 11:  # Data section
++                self._validate_data_section(wasm_bytes, idx, section_size)
++            
++            idx += section_size
 +    
-+    def _validate_address(self, addr: int, size: int
++    def _read_leb128(self, data: bytes, offset: int) -> tuple:
++        """Read an unsigned LEB128 value. Returns (value, bytes_read)."""
++        result = 0
++        shift = 0
++        bytes_read = 0
++        
++        while True:
++            if offset + bytes_read >= len(data):
++                raise SandboxError(
++                    SandboxErrorType.VALIDATION_ERROR,
++                    "Truncated LEB128 encoding"
++                )
++            
++            byte = data[offset + bytes_read]
++            bytes_read += 1
++            
++            # Check for potential shift overflow
++            if shift >= 64:
++                raise SandboxError(
++                    SandboxErrorType.VALID
