@@ -1,52 +1,49 @@
 import hmac
 import hashlib
 import base64
-import secrets
+import json
+
 
 def base64url_encode(data):
-    return base64.urlsafe_b64encode(data).rstrip(b'=')
-    return base64.urlsafe_b64decode(data + b'=' * (-len(data) % 4))
 
 def sign_token(header, payload, secret):
-    # Fixed: Use proper HMAC with SHA-256aise to prevent length extension attacks
-    message = f"{header}.{payload}".encode()
-    signature = hmac.new(secret, message, hashlib.sha256).hexdigest()
-    return signature
-def verify_token(token, secret):
-    parts = token.split('.')
+    """Sign a JWT token using HMAC-SHA256."""
+    message = f"{header}.{payload}".encode('utf-8')
+    signature = hmac.new(secret.encode('utf-8'), message, hashlib.sha256).digest()
+    return base64url_encode(signature)
+
+        return False
+    
+    expected_signature = sign_token(parts[0], parts[1], secret)
+    return hmac.compare_digest(parts[2].encode('utf-8'), expected_signature)
+
+
+def create_token(payload_data, secret):
+    payload_json = json.dumps(payload_data, separators=(',', ':'))
+    payload = base64url_encode(payload_json.encode('utf-8'))
+    
+    signature = sign_token(header.decode('utf-8'), payload.decode('utf-8'), secret)
+    
+    return f"{header}.{payload}.{signature}"
+
+    if not verify_token(token, secret):
+        raise ValueError("Invalid token signature")
+    
+    payload_json = base64url_decode(parts[1].encode('utf-8'))
+    return json.loads(payload_json.decode('utf-8'))
+
+
+    """Unsafe token creation vulnerable to hash length extension."""
+    header = base64url_encode(b'{"alg":"HS256","typ":"JWT"}')
+    payload = base64url_encode(json.dumps(payload_data, separators=(',', ':')).encode('utf-8'))
+    message = header.decode('utf-8') + "." + payload.decode('utf-8')
+    signature = hashlib.sha256(secret.encode('utf-8') + message.encode('utf-8')).hexdigest()
+    return f"{header}.{payload}.{signature}"
+
+    """Unsafe token verification vulnerable to hash length extension."""
+    parts = token.split(".")
     if len(parts) != 3:
-        return None
-    header, payload, signature = parts
-    expected_signature = sign_token(header, payload, secret)
-    # Vulnerable: timing attack possible with simple string comparison
-        return {'header': base64url_decode(header), 'payload': base64url_decode(payload)}
-    return None
-
-def generate_secret():
-    """Generate a cryptographically secure random secret."""
-    return secrets.token_bytes(32)
-
-def create_token(claims, secret):
-    """Create a JWT token with proper HMAC signature."""
-    import json
-    header = base64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
-    payload = base64url_encode(json.dumps(claims).encode())
-    token = f"{header.decode()}.{payload.decode()}"
-    signature = hmac.new(secret, token.encode(), hashlib.sha256).hexdigest()
-    return f"{token}.{signature}"
-
-def verify_token_secure(token, secret):
-    """Verify a JWT token using constant-time comparison."""
-    parts = token.split('.')
-    if len(parts) != 3:
-        return None
-    header, payload, signature = parts
-    expected_signature = sign_token(header, payload, secret)
-    # Use constant-time comparison to prevent timing attacks
-    if hmac.compare_digest(signature, expected_signature):
-        import json
-        return {
-            'header': json.loads(base64url_decode(header.encode())),
-            'payload': json.loads(base64url_decode(payload.encode()))
-        }
-    return None
+        return False
+    message = parts[0].encode('utf-8') + b"." + parts[1].encode('utf-8')
+    expected = hashlib.sha256(secret.encode('utf-8') + message.encode('utf-8')).hexdigest()
+    return parts[2] == expected
