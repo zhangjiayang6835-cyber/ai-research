@@ -1,156 +1,147 @@
  ```diff
 --- a/k8s_rbac_validator.py
 +++ b/k8s_rbac_validator.py
-@@ -1,12 +1,18 @@
- #!/usr/bin/env python3
+@@ -1,3 +1,4 @@
++#!/usr/bin/env python3
  """
--Kubernetes RBAC Security Validator
--Checks for common RBAC misconfigurations that could lead to privilege escalation.
-+Kubernetes RBAC Security Validator and Fixer
-+Checks for common RBAC misconfigurations that could lead to privilege escalation
-+and provides secure configuration templates.
- """
+ Kubernetes RBAC Security Validator
  
+@@ -7,6 +8,7 @@
  import json
+ import re
  import sys
-+import os
 +import subprocess
-+import tempfile
-+import yaml
-+from typing import Dict, List, Optional, Tuple, Any
-+from dataclasses import dataclass, asdict
+ from pathlib import Path
+ from typing import Dict, List, Optional, Set, Tuple
+ 
+@@ -14,6 +16,7 @@
+ class RBACConfig:
+     """Represents a Kubernetes RBAC configuration."""
+     
++    # Default secure values - deny all by default
+     def __init__(self):
+         self.api_server_flags: Dict[str, str] = {}
+         self.rbac_rules: List[Dict] = []
+@@ -21,6 +24,7 @@ def __init__(self):
+         self.service_accounts: List[Dict] = []
+         self.anonymous_auth_enabled: bool = False
+         self.rbac_enabled: bool = False
++        self.authorization_mode: str = "RBAC"
  
  
- def check_rbac_misconfiguration():
-@@ -15,6 +21,7 @@ def check_rbac_misconfiguration():
-     """
-     findings = []
+ class RBACSecurityScanner:
+@@ -28,6 +32,7 @@ class RBACSecurityScanner:
      
-+    # Check for anonymous auth enabled (critical vulnerability)
-     try:
-         with open('/etc/kubernetes/manifests/kube-apiserver.yaml', 'r') as f:
-             content = f.read()
-@@ -22,6 +29,7 @@ def check_rbac_misconfiguration():
-                 findings.append("CRITICAL: --anonymous-auth=true found in API server config")
-     except FileNotFoundError:
-         findings.append("INFO: Could not read API server manifest")
-+        findings.append("WARNING: Ensure --anonymous-auth=false is set")
+     CRITICAL_ROLES = ["cluster-admin", "admin", "edit", "view"]
+     DANGEROUS_VERBS = ["*", "create", "delete", "update", "patch", "escalate"]
++    DANGEROUS_RESOURCES = ["pods/exec", "pods/attach", "secrets", "serviceaccounts"]
      
-     # Check for insecure port usage
-     try:
-@@ -31,6 +39,7 @@ def check_rbac_misconfiguration():
-                 findings.append("CRITICAL: --insecure-port is not 0")
-     except FileNotFoundError:
-         findings.append("INFO: Could not verify insecure port status")
-+        findings.append("WARNING: Ensure --insecure-port=0 is set")
+     def __init__(self):
+         self.findings: List[Dict] = []
+@@ -35,6 +40,7 @@ def __init__(self):
+     def scan_api_server_config(self, config: RBACConfig) -> List[Dict]:
+         """Scan API server configuration for RBAC bypass vulnerabilities."""
+         findings = []
++        flags = config.api_server_flags
+         
+         # Check for anonymous authentication
+         if config.anonymous_auth_enabled:
+:
+@@ -35,6 +40,7 @@ def __init__(self):
+     def scan_api_server_config(self, config: RBACConfig) -> List[Dict]:
+         """Scan API server configuration for RBAC bypass vulnerabilities."""
+         findings = []
++        flags = config.api_server_flags
+         
+         # Check for anonymous authentication
+         if config.anonymous_auth_enabled:
+@@ -42,6 +48,7 @@ def scan_api_server_config(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "CRITICAL",
+                 "category": "anonymous_auth",
+                 "description": "Anonymous authentication is enabled on the API server",
++                "fix": "Add --anonymous-auth=false to kube-apiserver flags",
+                 "mitigation": "Disable anonymous authentication with --anonymous-auth=false"
+             })
+         
+@@ -51,6 +58,7 @@ def scan_api_server_config(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "CRITICAL",
+                 "category": "rbac_disabled",
+                 "description": "RBAC authorization is not enabled",
++                "fix": "Add --authorization-mode=RBAC to kube-apiserver flags",
+                 "mitigation": "Enable RBAC with --authorization-mode=RBAC"
+             })
+         
+@@ -60,9 +68,22 @@ def scan_api_server_config(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "HIGH",
+                 "category": "always_allow_paths",
+                 "description": f"AlwaysAllow paths configured: {config.always_allow_paths}",
++                "fix": "Remove --authorization-always-allow-paths or set to empty",
+                 "mitigation": "Remove sensitive paths from authorization bypass"
+             })
+         
++        # Check for insecure authorization mode
++        auth_mode = flags.get("authorization-mode", "")
++        if "AlwaysAllow" in auth_mode:
++            findings.append({
++                "severity": "CRITICAL",
++                "category": "always_allow_auth",
++                "description": "Authorization mode includes AlwaysAllow",
++                "fix": "Remove AlwaysAllow from --authorization-mode",
++                "mitigation": "Use only RBAC, Node, or Webhook authorization modes"
++            })
++        
++        # Check for insecure port enabled
++        if flags.get("insecure-port", "0") != "0":
++            findings.append({
++                "severity": "CRITICAL",
++                "category": "insecure_port",
++                "description": "Insecure port is enabled on API server",
++                "fix": "Set --insecure-port=0",
++                "mitigation": "Disable insecure port by setting --insecure-port=0"
++            })
++        
+         return findings
      
-     # Check for authorization mode
-     try:
-@@ -40,6 +49,7 @@ def check_rbac_misconfiguration():
-                 findings.append("WARNING: RBAC not enabled in authorization-mode")
-     except FileNotFoundError:
-         findings.append("INFO: Could not verify authorization mode")
-+        findings.append("WARNING: Ensure --authorization-mode includes RBAC")
-     
-     return findings
- 
-@@ -49,6 +59,7 @@ def check_cluster_role_bindings():
-     Check for overly permissive cluster role bindings.
-     """
-     dangerous_bindings = []
-+    binding_fixes = []
-     
-     # Check for cluster-admin binding to default service account
-     try:
-@@ -57,6 +68,7 @@ def check_cluster_role_bindings():
-         if result.returncode == 0:
-             if "cluster-admin" in result.stdout:
-                 dangerous_bindings.append("CRITICAL: cluster-admin bound to default service account")
-+                binding_fixes.append("Remove cluster-admin from default service account; create dedicated service account with minimal permissions")
-     except FileNotFoundError:
-         dangerous_bindings.append("INFO: kubectl not available for binding checks")
-     
-@@ -66,6 +78,7 @@ def check_cluster_role_bindings():
-         if result.returncode == 0:
-             if "system:anonymous" in result.stdout:
-                 dangerous_bindings.append("CRITICAL: Anonymous user has cluster permissions")
-+                binding_fixes.append("Remove all bindings for system:anonymous; use authenticated users only")
-     except FileNotFoundError:
-         dangerous_bindings.append("INFO: kubectl not available for user checks")
-     
-@@ -75,6 +88,7 @@ def check_cluster_role_bindings():
-         if result.returncode == 0:
-             if "system:masters" in result.stdout:
-                 dangerous_bindings.append("WARNING: system:masters group has excessive permissions")
-+                binding_fixes.append("Audit system:masters group membership; remove unnecessary users")
-     except FileNotFoundError:
-         dangerous_bindings.append("INFO: kubectl not availableubre available for group checks")
-     
-@@ -83,6 +97,7 @@ def check_cluster_role_bindings():
- 
- def check_pod_security():
-     """Check for pod security policy gaps."""
-+    psp_fixes = []
-     try:
-         result = subprocess.run(['kubectl', 'get', 'psp'], 
-                               capture_output=True, text=True, timeout=10)
-@@ -90,6 +105,7 @@ def check_pod_security():
-             # Check for privileged pods allowed
-             if "privileged" in result.stdout.lower():
-                 print("WARNING: Privileged pod security policy exists")
-+                psp_fixes.append("Restrict privileged pod security policy; use restricted PSP as default")
-     except (FileNotFoundError, subprocess.TimeoutExpired):
-         pass
-     
-@@ -97,6 +113,7 @@ def check_pod_security():
-     try:
-         result = subprocess.run(['kubectl', 'get', 'networkpolicies', '--all-namespaces'],
-                               capture_output=True, text=True, timeout=10)
-+        psp_fixes.append("Implement default deny-all network policy in each namespace")
-     except (FileNotFoundError, subprocess.TimeoutExpired):
-         pass
-     
-@@ -104,6 +121,7 @@ def check_pod_security():
-     try:
-         result = subprocess.run(['kubectl', 'get', 'serviceaccounts', '--all-namespaces'],
-                               capture_output=True, text=True, timeout=10)
-+        psp_fixes.append("Disable auto-mount of service account tokens for pods that don't need API access")
-     except (FileNotFoundError, subprocess.TimeoutExpired):
-         pass
- 
-@@ -111,6 +129,7 @@ def check_pod_security():
- def check_api_server_config():
-     """Check API server for security misconfigurations."""
-     issues = []
-+    fixes = []
-     
-     # Check for insecure bind address
-     try:
-@@ -119,6 +138,7 @@ def check_api_server_config():
-             if '--insecure-bind-address' in content:
-                 if '127.0.0.1' not in content:
-                     issues.append("CRITICAL: API server binds insecurely to non-localhost")
-+                    fixes.append("Set --insecure-bind-address=127.0.0.1 or remove the flag entirely")
-     except FileNotFoundError:
-         pass
-     
-@@ -128,6 +148,7 @@ def check_api_server_config():
-             content = f.read()
-             if '--enable-admission-plugins' not in content:
-                 issues.append("WARNING: Admission controllers not explicitly configured")
-+                fixes.append("Enable admission controllers: --enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,PodSecurityPolicy")
-     except FileNotFoundError:
-         pass
-     
-@@ -137,6 +158,7 @@ def check_api_server_config():
-             content = f.read()
-             if '--audit-log-path' not in content:
-                 issues.append("WARNING: API audit logging not configured")
-+                fixes.append("Enable audit logging: --audit-log-path=/var/log/audit/audit.log --audit-policy-file=/etc/kubernetes/audit-policy.yaml")
-     except FileNotFoundError:
-         pass
-     
-@@ -146,6 +168,7 @@ def check_api_server_config():
-             content = f.read()
-             if '--request-timeout' not in content:
-                 issues.append
+     def scan_role_bindings(self, config: RBACConfig) -> List[Dict]:
+@@ -73,6 +94,7 @@ def scan_role_bindings(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "HIGH",
+                 "category": "wildcard_permissions",
+                 "description": f"Role {role.get('name')} has wildcard permissions",
++                "fix": "Replace '*' with explicit verbs and resources",
+                 "mitigation": "Use explicit permissions instead of wildcards"
+             })
+         
+@@ -82,6 +104,7 @@ def scan_role_bindings(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "MEDIUM",
+                 "category": "privileged_escalation",
+                 "description": f"Role {role.get('name')} allows privilege escalation",
++                "fix": "Remove escalate verb or add restrictions",
+                 "mitigation": "Restrict privilege escalation permissions"
+             })
+         
+@@ -91,6 +114,7 @@ def scan_role_bindings(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "HIGH",
+                 "category": "cluster_admin_binding",
+                 "description": f"Service account bound to cluster-admin: {sa.get('name')}",
++                "fix": "Use least-privilege role instead of cluster-admin",
+                 "mitigation": "Apply principle of least privilege"
+             })
+         
+@@ -100,6 +124,7 @@ def scan_role_bindings(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "HIGH",
+                 "category": "dangerous_resource_access",
+                 "description": f"Role {role.get('name')} has access to secrets",
++                "fix": "Limit secret access to specific namespaces and names",
+                 "mitigation": "Restrict secret access to necessary namespaces only"
+             })
+         
+@@ -109,6 +134,7 @@ def scan_role_bindings(self, config: RBACConfig) -> List[Dict]:
+                 "severity": "HIGH",
+                 "category": "dangerous_resource_access",
+                 "description": f"Role {role.get('name')} has pod exec access",
++                "fix": "Remove pods/exec permission unless explicitly required",
+                 "mitigation": "Restrict pod exec access to necessary pods only"
+             })
+         
+@@ -118,6 +144,7 @@ def scan_role_bindings(self, config: RBACConfig) -> List[Dict]:
+                 "severity":
