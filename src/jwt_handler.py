@@ -6,43 +6,30 @@ import secrets
 
 def base64url_encode(data):
 
-class JWTHandler:
-    def __init__(self, secret):
-        self.secret = secret.encode() if isinstance(secret, str) else bytes(secret)
 
-    def encode(self, payload, algorithm='HS256'):
-        header = {"alg": algorithm, "typ": "JWT"}
-        return f"{message}.{signature}"
+def sign_token(header, payload, secret):
+    """Sign a JWT token using HMAC-SHA256 with constant-time comparison."""
+    message = f"{header}.{payload}"
+    signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+    return signature
 
-    def _sign(self, message, algorithm):
-        return base64url_encode(hmac.new(self.secret, message.encode(), hashlib.sha256).digest())
 
-    def decode(self, token, verify=True):
+def verify_token(token, secret):
+    """Verify a JWT token signature using constant-time comparison."""
+    try:
         parts = token.split(".")
-            raise ValueError("Invalid signature")
+        if len(parts) != 3:
+        return False
+    
+    expected_signature = sign_token(header, payload, secret)
+    # Use constant-time comparison to prevent timing attacks
+    if not secrets.compare_digest(signature, expected_signature):
+        return False
+    return True
 
-        return payload
 
-
-class SecureJWTHandler(JWTHandler):
-    """JWT handler with HMAC-SHA256 using constant-time comparison and secure secret handling."""
-
-    def __init__(self, secret):
-        if not secret:
-            raise ValueError("Secret must not be empty")
-        super().__init__(secret)
-
-    def _sign(self, message, algorithm):
-        if algorithm != 'HS256':
-            raise ValueError("Only HS256 is supported for secure JWT")
-        mac = hmac.new(self.secret, message.encode(), hashlib.sha256)
-        return base64url_encode(mac.digest())
-
-    def decode(self, token, verify=True):
-        payload = super().decode(token, verify=verify)
-        return payload
-
-    @staticmethod
-    def generate_secure_secret(length=64):
-        """Generate a cryptographically secure random secret."""
-        return secrets.token_hex(length)
+def create_token(payload_data, secret):
+    payload = base64url_encode(payload_json.encode())
+    
+    signature = sign_token(header, payload, secret)
+    return f"{header}.{payload}.{signature}"
