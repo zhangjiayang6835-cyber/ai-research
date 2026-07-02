@@ -1,54 +1,91 @@
 import requests
-import ipaddress
 import urllib.parse
 from flask import Flask, request, send_file
-from reportlab.lib.pagesizes import letter
+import pdfkit
+
 1. 只允许HTTPS协议
-2. 强制hostname白名单验证
-3. 解析并验证目标IP不在私有/保留范围
-4. 禁止重定向（避免开放重定向链）
-PDF_STORAGE_PATH = "/tmp/generated.pdf"
+
+PDFKIT_CONFIG = pdfkit.configuration()
+
+BLOCKED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '::1',
+    '[::1]',
+    '169.254.169.254',  # AWS metadata
+    '169.254.170.2',    # AWS ECS metadata
+]
+
+BLOCKED_PREFIXES = [
+    '10.',
+    '172.16.',
+    '172.17.',
+    '172.18.',
+    '172.19.',
+    '172.20.',
+    '172.21.',
+    '172.22.',
+    '172.23.',
+    '172.24.',
+    '172.25.',
+    '172.26.',
+    '172.27.',
+    '172.28.',
+    '172.29.',
+    '172.30.',
+    '172.31.',
+    '192.168.',
+    'fc00:',
+    'fe80:',
+]
 
 
-def is_private_url(url):
-    """Check if URL resolves to a private/internal IP address to prevent SSRF."""
+def is_internal_url(url):
+    """Check if URL points to internal/private resources."""
     try:
         parsed = urllib.parse.urlparse(url)
         hostname = parsed.hostname
         if not hostname:
             return True
         
-        # Check if hostname is an IP address
-        try:
-            ip = ipaddress.ip_address(hostname)
-            # Block private, loopback, reserved, and multicast addresses
-            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_multicast:
+        hostname_lower = hostname.lower()
+        
+        # Check exact blocked hosts
+        if hostname_lower in BLOCKED_HOSTS:
+            return True
+        
+        # Check blocked prefixes
+        for prefix in BLOCKED_PREFIXES:
+            if hostname_lower.startswith(prefix):
                 return True
-        except ValueError:
-            # Not an IP, resolve it
-            import socket
-            resolved_ip = ipaddress.ip_address(socket.getaddrinfo(hostname, None)[0][4][0])
-            if resolved_ip.is_private or resolved_ip.is_loopback or resolved_ip.is_reserved or resolved_ip.is_multicast:
-                return True
+        
+        # Block bare IP addresses (dotted decimal)
+        import re
+        if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', hostname):
+            return True
+        
         return False
     except Exception:
         return True
 
 
-@app.route("/generate-pdf", methods=["POST"])
+@app.route('/generate-pdf', methods=['POST'])
 def generate_pdf():
-    data = request.get_json()
-import socket
+    url = request.form.get('url')
+"""
     if not url:
-        return {"error": "Missing 'url' parameter"}, 400
+        return {'error': 'Missing URL parameter'}, 400
     
-    # Prevent SSRF by blocking internal/private URLs
-    if is_private_url(url):
-        return {"error": "Access to internal or private URLs is not allowed"}, 403
+    if is_internal_url(url):
+        return {'error': 'URL not allowed'}, 403
     
     try:
-        # Fetch external content to include in PDF
-        response = requests.get(url, timeout=10)
+        pdfkit.from_url(url, 'output.pdf', configuration=PDFKIT_CONFIG)
+        return send_file('output.pdf', mimetype='application/pdf')
+import urllib.request
+
+
 ALLOWED_HOSTS = frozenset({
     "api.example.com",
     "assets.example.com",
