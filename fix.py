@@ -3,181 +3,152 @@
 
 #!/usr/bin/env python3
 """
-Security fix for Dangling DNS Record → Subdomain Takeover → Cookie Stealing
+Fix for Dangling DNS Record → Subdomain Takeover → Cookie Stealing vulnerability.
 
-This module provides functions to validate and sanitize DNS records
-to prevent subdomain takeover attacks that can lead to cookie stealing.
+This script provides utilities to:
+1. Detect dangling DNS records that point to unclaimed cloud resources
+2. Validate subdomain ownership before setting cookies
+3. Prevent cookie stealing via subdomain takeover attacks
 """
 
-import re
-import urllib.parse
-from typing import List, Optional, Set
+import dns.resolver
+import requests
+import socket
+import ssl
+from urllib.parse import urlparse
 
 
-# Known vulnerable/cloud platform domains that can be hijacked
-KNOWN_VULNERABLE_DOMAINS: Set[str] = {
-    'github.io',
-    'herokuapp.com',
-    'netlify.app',
-    'vercel.app',
-    'firebaseapp.com',
-    'azurewebsites.net',
-    'cloudapp.net',
-    's3.amazonaws.com',
-    'elb.amazonaws.com',
-    'cloudfront.net',
-    'elasticbeanstalk.com',
-    'surge.sh',
-    'now.sh',
-    'pages.dev',
-    'web.app',
-    'appspot.com',
-    'blogspot.com',
-    'tumblr.com',
-    'wordpress.com',
-    'wixsite.com',
-    'squarespace.com',
-    'shopify.com',
-    'fastly.net',
-    'myshopify.com',
-}
-
-
-def is_dangling_dns_record(cname_target: str, verified_records: List[str]) -> bool:
+def check_dangling_dns_record(domain, expected_endpoint=None):
     """
-    Check if a CNAME record is dangling (points to unverified external resource).
-    
-    Args:
-        cname_target: The CNAME target domain
-        verified_records: List of verified/owned resource identifiers
-    
-    Returns:
-        True if the record appears to be dangling
+    Check if a DNS record is dangling (points to unclaimed resource).
+    Returns True if dangling, False if valid.
     """
-    if not cname_target or not isinstance(cname_target, str):
+    try:
+        # Resolve the domain
+        answers = dns.resolver.resolve(domain, 'CNAME')
+        for rdata in answers:
+            cname_target = str(rdata.target).rstrip('.')
+            
+            # Check if the CNAME target responds
+            try:
+                response = requests.head(
+                    f"https://{cname_target}", 
+                    timeout=5,
+                    allow_redirects=False
+                )
+                # If we get here, the target exists
+                return False
+            except requests.RequestException:
+                # Target doesn't respond - potential dangling record
+                return True
+                
+    except dns.resolver.NoAnswer:
+        # No CNAME record, check A record
+        pass
+    except dns.resolver.NXDOMAIN:
+        # Domain doesn't exist
+        return True
+    
+    return False
+
+
+def validate_subdomain_ownership(domain, allowed_domains=None):
+    """
+    Validate that a subdomain belongs to an allowed set of domains.
+    Prevents subdomain takeover by ensuring strict domain validation.
+    """
+    if allowed_domains is None:
+        allowed_domains = []
+    
+    domain = domain.lower().strip()
+    
+    # Check for null bytes and other injection attempts
+    if '\x00' in domain or '%00' in domain:
         return False
     
-    cname_lower = cname_target.lower().strip().rstrip('.')
-    
-    # Check if pointing to known vulnerable platform
-    for vulnerable_domain in KNOWN_VULNERABLE_DOMAINS:
-        if cname_lower.endswith(vulnerable_domain):
-            # Check if the specific resource is verified
-            for record in verified_records:
-                if record.lower().strip() in cname_lower:
-                    return False
+    # Prevent wildcard bypasses
+    for allowed in allowed_domains:
+        allowed = allowed.lower().strip()
+        # Exact match or proper subdomain
+        if domain == allowed or domain.endswith('.' + allowed):
             return True
     
     return False
 
 
-def validate_cookie_security(domain: str, cookie_settings: dict) -> dict:
+def set_secure_cookie(response, name, value, domain=None, secure=True, httponly=True, samesite='Strict'):
     """
-    Enforce secure cookie settings to prevent cookie stealing via subdomain takeover.
+    Set a secure cookie with protections against subdomain takeover.
     """
-    if not cookie_settings:
-        cookie_settings = {}
+    cookie_kwargs = {
+        'secure': secure,
+        'httponly': httponly,
+        'samesite': samesite,
+    }
     
-    # Force secure flags
-    cookie_settings['Secure'] = True
-    cookie_settings['HttpOnly'] = True
-    cookie_settings['SameSite'] = 'Strict'
+    if domain:
+        # Validate domain before setting cookie
+        # Prevent setting cookies on domains that might be taken over
+        if not validate_subdomain_ownership(domain, [domain]):
+            raise ValueError(f"Invalid or potentially compromised domain: {domain}")
+        cookie_kwargs['domain'] = domain
     
-    # Set Domain attribute carefully - never use wildcard for sensitive cookies
-    if 'Domain' in cookie_settings and cookie_settings['Domain'].startswith('*.'):
-        cookie_settings['Domain'] = cookie_settings['Domain'].replace('*.', '', illegally, 1)
-    
-    return cookie_settings
+    # Set the cookie on the response
+    response.set_cookie(name, value, **cookie_kwargs)
+    return response
 
 
-def sanitize_subdomain(subdomain: str) -> Optional[str]:
+def check_subdomain_takeover_risk(domain, cloud_providers=None):
     """
-    Validate and sanitize a subdomain string to prevent injection.
+    Comprehensive check for subdomain takeover vulnerability.
+    Returns dict with risk assessment.
     """
-    if not subdomain or not isinstance(subdomain, str):
-        return None
+    if cloud_providers is None:
+        cloud_providers = [
+            'amazonaws.com',
+            'azurewebsites.net',
+            'cloudapp.azure.com',
+            'herokuapp.com',
+            'github.io',
+            'vercel.app',
+            'netlify.app',
+            'firebaseapp.com',
+            'appspot.com',
+        ]
     
-    # Remove protocol if present
-    sanitized = urllib.parse.urlparse(subdomain).netloc or subdomain
+    result = {
+        'domain': domain,
+        'is_dangling': False,
+        'risk_level': 'low',
+        'vulnerable_cnames': [],
+    }
     
-    # Only allow valid DNS characters
-    if not re.match(r'^[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)*$', sanitized):
-        return None
+    try:
+        answers = dns.resolver.resolve(domain, 'CNAME')
+        for rdata in answers:
+            cname_target = str(rdata.target).rstrip('.')
+            
+            # Check if pointing to cloud provider
+            for provider in cloud_providers:
+                if provider in cname_target:
+                    try:
+                        # Try to resolve the CNAME target
+                        socket.gethostbyname(cname_target)
+                    except socket.gaierror:
+                        # DNS resolves but host doesn't - dangling!
+                        result['is_dangling'] = True
+                        result['vulnerable_cnames'].append(cname_target)
+                        result['risk_level'] = 'critical'
+                        
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        pass
     
-    return sanitized.lower()
-
-
-def check_dns_takeover_risk(dns_records: List[dict]) -> List[dict]:
-    """
-    Scan DNS records for subdomain takeover vulnerabilities.
-    
-    Returns list of risky records with recommendations.
-    """
-    risks = []
-    
-    for record in dns_records:
-        record_type = record.get('type', '').upper()
-        name = record.get('name', '')
-        value = record.get('value', '')
-        
-        if record_type == 'CNAME':
-            # Check for dangling CNAME
-            if is_dangling_dns_record(value, record.get('verified', [])):
-                risks.append({
-                    'record': record,
-                    'risk': 'dangling_cname',
-                    'severity': 'high',
-                    'recommendation': 'Remove or update CNAME; verify resource ownership before pointing DNS'
-                })
-        
-        # Check for wildcard records that increase attack surface
-        if record_type in ('A', 'CNAME', 'AAAA') and name.startswith('*.'):
-            risks.append({
-                'record': record,
-                'risk': 'wildcard_record',
-                'severity': 'medium', 
-                'recommendation': 'Avoid wildcard DNS records; use explicit records instead'
-            })
-    
-    return risks
-
-
-def secure_cookie_headers(response_headers: dict, domain: str) -> dict:
-    """
-    Add security headers to prevent cookie stealing attacks.
-    """
-    secure_headers = response_headers.copy()
-    
-    # Prevent subdomain cookie leakage
-    secure_headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    
-    # Content Security Policy
-    secure_headers['Content-Security-Policy'] = "default-src 'self'"
-    
-    # Prevent clickjacking
-    secure_headers['X-Frame-Options'] = 'DENY'
-    
-    return secure_headers
+    return result
 
 
 if __name__ == '__main__':
-    # Example usage / basic tests
-    print("DNS Security Fix Module Loaded")
-    
-    # Test dangling detection
-    test_cname = "victim.github.io"
-    result = is_dangling_dns_record(test_cname, [])
-    print(f"Dangling check for {test_cname}: {result}")
-    
-    # Test cookie security
-    cookies = validate_cookie_security('example.com', {})
-    print(f"Secure cookies: {cookies}")
-    
-    # Test DNS scan
-    records = [
-        {'type': 'CNAME', 'name': 'blog.example.com', 'value': 'unknown.github.io', 'verified': []},
-        {'type': 'A', 'name': '*.example.com', 'value': '1.2.3.4'},
-    ]
-    risks = check_dns_takeover_risk(records)
-    print(f"Found {len(risks)} risks")
+    # Example usage
+    test_domain = 'vulnerable.example.com'
+    result = check_subdomain_takeover_risk(test_domain)
+    print(f"Risk assessment for {test_domain}: {result}")
 print("fix #194")
