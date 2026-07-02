@@ -10,50 +10,31 @@ def base64url_encode(data):
 def sign_token(header, payload, secret):
     """Sign a JWT token using HMAC-SHA256 with constant-time comparison."""
     message = f"{header}.{payload}"
-    signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
-    return base64url_encode(signature)
-
-
-    """Verify a JWT token signature."""
-    try:
-        expected_signature = sign_token(header, payload, secret)
-        # Use constant-time comparison to prevent timing attacks
-        if not secrets.compare_digest(signature, expected_signature):
-            return False
-        # Additional validation: ensure signature is properly formatted
-        if len(signature) != len(expected_signature):
-            return False
-        return True
-    except Exception:
-        return False
-
-
-    """Decode and verify a JWT token."""
-    try:
-        header_b64, payload_b64, signature_b64 = token.split(".")
-        # Decode signature from base64url
-        signature_bytes = base64url_decode(signature_b64)
-        # Convert to hex string for comparison
-        signature = signature_bytes.hex()
-        header = base64url_decode(header_b64).decode()
-        payload = base64url_decode(payload_b64).decode()
-        return header, payload, signature
-def create_token(header, payload, secret):
-    """Create a JWT token."""
-    header_b64 = base64url_encode(header.encode())
-    payload_b64 = base64url_encode(payload.encode())
-    signature_hex = sign_token(header_b64, payload_b64, secret)
-    # Convert hex signature back to bytes for base64url encoding
-    signature_bytes = bytes.fromhex(signature_hex)
-    signature_b64 = base64url_encode(signature_bytes)
-    return f"{header_b64}.{payload_b64}.{signature_b64}"
-
+    signature = hmac.new(
+        secret.encode('utf-8'),
 
 def verify_token(token, secret):
-    try:
-        header_b64, payload_b64, signature = decode_token(token)
-        if verify_signature(header_b64, payload_b64, signature, secret):
-            return {"header": header_b64, "payload": payload_b64}
-        return False
-    except Exception:
-        return False
+    """Verify a JWT token and return the payload if valid."""
+    parts = token.split('.', 2)
+    if len(parts) != 3:
+        raise ValueError("Invalid token format")
+    
+    signature = parts[2]
+    
+    expected_signature = sign_token(header, payload, secret)
+    
+    # Use constant-time comparison to prevent timing attacks
+    if not secrets.compare_digest(
+        signature.encode('utf-8'), 
+        expected_signature.encode('utf-8')
+    ):
+        raise ValueError("Invalid signature")
+    
+    return base64url_decode(payload)
+
+def create_token(payload_dict, secret):
+    """Create a JWT token from a payload dictionary."""
+    import json
+    
+    header = base64url_encode(b'{"alg":"HS256","typ":"JWT"}')
+    payload = base64url_encode(json.dumps(payload_dict).encode('utf-8'))
