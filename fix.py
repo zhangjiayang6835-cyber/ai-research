@@ -1,91 +1,153 @@
 # Auto fix for zhangjiayang6835-cyber/ai-research#194
 # 1782921258
 
-"""
-Secure session cookie encryption using AES-GCM.
-Fixes Padding Oracle Attack vulnerability by using authenticated encryption.
-"""
-
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import os
 import base64
 import json
 import hmac
 import hashlib
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 class SecureCookieManager:
     """
-    Secure cookie encryption using AES-GCM with authentication.
-    Replaces vulnerable CBC mode that was susceptible to padding oracle attacks.
+    Secure session cookie manager that prevents Padding Oracle attacks
+    by using authenticated encryption (AES-GCM) instead of CBC mode.
     """
     
     def __init__(self, key: bytes = None):
-        """Initialize with a 256-bit key."""
-        self.key = key or os.urandom(32)
-        self._key_hmac = hashlib.sha256(self.key + b'hmac').digest()
+        """
+        Initialize with a 256-bit key. If no key provided, generates one.
+        In production, load from secure key management (e.g., AWS KMS, HashiCorp Vault).
+        """
+        if key is None:
+            key = os.urandom(32)  # 256-bit key
+        elif len(key) not in (16, 24, 32):
+            raise ValueError("Key must be 128, 192, or 256 bits")
+        self.key = key
+        self.aesgcm = AESGCM(self.key)
     
-    def encrypt_cookie(self, data: dict) -> str:
+    def encrypt_cookie(self, plaintext: str, associated_data: bytes = b"session") -> str:
         """
-        Encrypt session data using AES-GCM.
-        Returns base64-encoded ciphertext with nonce and tag.
+        Encrypt session data using AES-GCM with authenticated encryption.
+        Returns base64-encoded ciphertext with nonce prepended.
         """
-        # Serialize data
-        plaintext = json.dumps(data).encode('utf-8')
+        nonce = os.urandom(12)  # 96-bit nonce for GCM
+        plaintext_bytes = plaintext.encode('utf-8')
         
-        # Generate random nonce (IV) - 96 bits for GCM
-        nonce = os.urandom(12)
+        ciphertext = self.aesgcm.encrypt(
+            nonce,
+            plaintext_bytes,
+            associated_data
+        )
         
-        # Encrypt with AES-GCM
-        aesgcm = AESGCM(self.key)
-        ciphertext = aesgcm.encrypt(nonce, plaintext, None)
-        
-        # Format: nonce || ciphertext (tag is appended by AESGCM)
-        # Combine and encode
+        # Format: nonce + ciphertext + tag (GCM appends tag to ciphertext)
         combined = nonce + ciphertext
         return base64.urlsafe_b64encode(combined).decode('ascii').rstrip('=')
     
-    def decrypt_cookie(self, token: str) -> dict:
+    def decrypt_cookie(self, token: str, associated_data: bytes = b"session") -> str:
         """
         Decrypt and verify session cookie.
-        Raises ValueError if tampering is detected.
+        Raises exception on tampering or decryption failure.
         """
-        # Restore padding
+        # Add padding for base64
         padding = 4 - len(token) % 4
         if padding != 4:
-            token += '=' * padding
-        
-        # Decode
+            token = token + '=' * padding
+            
         combined = base64.urlsafe_b64decode(token.encode('ascii'))
         
-        # Extract nonce and ciphertext
         nonce = combined[:12]
         ciphertext = combined[12:]
         
-        # Decrypt - AESGCM will verify authentication tag
-        aesgcm = AESGCM(self.key)
-        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
-        
-        return json.loads(plaintext.decode('utf-8'))
+        plaintext = self.aesgcm.decrypt(nonce, ciphertext, associated_data)
+        return plaintext.decode('utf-8')
+
+
+class HMACCookieManager:
+    """
+    Alternative: Encrypt-then-MAC using AES-CBC with HMAC.
+    Prevents padding oracle by verifying MAC before decryption.
+    """
     
-    def create_session_cookie(self, session_data: dict) -> str:
-        """Create a secure session cookie string."""
-        return self.encrypt_cookie(session_data)
- supplemental
-    def verify_and_decrypt(self, cookie_value: str) -> dict:
-        """Verify and decrypt a session cookie."""
-        return self.decrypt_cookie(cookie_value)
+    def __init__(self, enc_key: bytes = None, mac_key: bytes = None):
+        self.enc_key = enc_key or os.urandom(32)
+        self.mac_key = mac_key or os.urandom(32)
+    
+    def _hmac(self, data: bytes) -> bytes:
+        return hmac.new(self.mac_key, data, hashlib.sha256).digest()
+    
+    def encrypt_cookie(self, plaintext: str) -> str:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        import struct
+        
+        # Pad plaintext
+        padder = lambda p: p + (16 - len(p) % 16) * bytes([16 - len(p) % 16])
+        padded = padder(plaintext.encode('utf-8'))
+        
+        # Encrypt
+        iv = os.urandom(16)
+        cipher = Cipher(algorithms.AES(self.enc_key), modes.CBC(iv))
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(padded) + encryptor.finalize()
+        
+        # Compute MAC over IV || ciphertext
+        mac = self._hmac(iv + ciphertext)
+        
+        # Format: IV || ciphertext || MAC
+        combined = iv + ciphertext + mac
+        return base64.urlsafe_b64encode(combined).decode('ascii').rstrip('=')
+    
+    def decrypt_cookie(self, token: str) -> str:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        
+        # Add padding
+        padding = 4 - len(token) % 4
+        if padding != 4:
+            token = token + '=' * padding
+            
+        combined = base64.urlsafe_b64decode(token.encode('ascii'))
+        
+        # Extract components
+        iv = combined[:16]
+        mac = combined[-32:]
+        ciphertext = combined[16:-32]
+        
+        # Verify MAC FIRST (constant-time comparison)
+        expected_mac = self._hmac(iv + ciphertext)
+        if not hmac.compare_digest(mac, expected_mac):
+            raise ValueError("Invalid MAC - possible tampering detected")
+        
+        # Only decrypt if MAC is valid
+        cipher = Cipher(algorithms.AES(self.enc_key), modes.CBC(iv))
+        decryptor = cipher.decryptor()
+        padded = decryptor.update(ciphertext) + decryptor.finalize()
+        
+        # Remove PKCS7 padding
+        pad_len = padded[-1]
+        return padded[:-pad_len].decode('utf-8')
 
 
-# Backward-compatible functions for existing code
-def encrypt_session(data: dict, key: bytes = None) -> str:
-    """Encrypt session data securely."""
-    manager = SecureCookieManager(key)
-    return manager.encrypt_cookie(data)
+# Backward-compatible API
+def create_secure_manager(key: bytes = None) -> SecureCookieManager:
+    """Factory function to create a secure cookie manager."""
+    return SecureCookieManager(key)
 
 
-def decrypt_session(token: str, key: bytes = None) -> dict:
-    """Decrypt session data with integrity verification."""
-    manager = SecureCookieManager(key)
-    return manager.decrypt_cookie(token)
+def encrypt_session_data(data: dict, secret_key: bytes = None) -> str:
+    """
+    Encrypt session data securely, preventing padding oracle attacks.
+    """
+    manager = SecureCookieManager(secret_key)
+    json_data = json.dumps(data, separators=(',', ':'))
+    return manager.encrypt_cookie(json_data)
+
+
+def decrypt_session_data(token: str, secret_key: bytes = None) -> dict:
+    """
+    Decrypt and verify session data.
+    """
+    manager = SecureCookieManager(secret_key)
+    json_data = manager.decrypt_cookie(token)
+    return json.loads(json_data)
 print("fix #194")
