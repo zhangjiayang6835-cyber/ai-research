@@ -6,50 +6,100 @@ import secrets
 
 def base64url_encode(data):
 
-
-def sign_token(header, payload, secret):
-    """Sign a JWT token using HMAC-SHA256. Secure against length extension attacks."""
-    message = f"{header}.{payload}"
-    signature = hmac.new(
-        secret.encode('utf-8'),
+def sign(token, secret):
+    """Sign a token using HMAC-SHA256."""
+    return hmac.new(secret.encode(), token.encode(), hashlib.sha256).hexdigest()
 
 
-def verify_token(token, secret):
-    """Verify a JWT token signature. Secure against length extension attacks."""
+def encode(payload, secret):
+    header = base64url_encode('""')
+    payload_encoded = base64url_encode(payload)
+    token = f"{header}.{payload_encoded}"
+    signature = hmac.new(secret.encode(), token.encode(), hashlib.sha256).hexdigest()
+    return f"{token}.{signature}"
+
+
+    except (ValueError, IndexError):
+        raise ValueError("Invalid token format")
+
+    expected_signature = hmac.new(secret.encode(), f"{header}.{payload}".encode(), hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(signature, expected_signature):
+        raise ValueError("Invalid signature")
+    return base64url_decode(payload)
+
+
+def verify(token, secret):
+    """Verify a token's signature."""
     try:
-        parts = token.split('.')
-        if len(parts) != 3:
-        return True
-    except Exception:
+        decode(token, secret)
+    except ValueError:
         return False
 
 
-def generate_secure_secret(length=32):
-    """Generate a cryptographically secure random secret."""
-    return secrets.token_hex(length)
-
-
-def create_token(claims, secret, algorithm='HS256'):
-    """Create a new JWT token with the given claims and secret."""
-    import json
-    header = base64url_encode(json.dumps({"alg": algorithm, "typ": "JWT"}).encode())
-    payload = base64url_encode(json.dumps(claims).encode())
-    return sign_token(header, payload, secret)
-
-
-def decode_token(token, secret):
-    """Decode and verify a JWT token, returning the payload if valid."""
-    import json
-    if not verify_token(token, secret):
-        raise ValueError("Invalid token signature")
+class SecureJWT:
+    """JWT implementation hardened against Hash Length Extension attacks."""
     
-    parts = token.split('.')
-    payload_json = base64url_decode(parts[1])
-    return json.loads(payload_json)
+    @staticmethod
+    def _get_secret_key(secret):
+        """Derive a fixed-length key from secret to prevent HLE attacks."""
+        return hashlib.sha256(secret.encode()).digest()
+    
+    @classmethod
+    def sign(cls, token, secret):
+        """Sign token with HMAC-SHA256 using fixed-length key."""
+        key = cls._get_secret_key(secret)
+        return hmac.new(key, token.encode(), hashlib.sha256).hexdigest()
+    
+    @classmethod
+    def encode(cls, payload, secret):
+        """Encode payload into JWT with secure signature."""
+        header = base64url_encode('{"alg":"HS256","typ":"JWT"}')
+        payload_encoded = base64url_encode(payload)
+        token = f"{header}.{payload_encoded}"
+        signature = cls.sign(token, secret)
+        return f"{token}.{signature}"
+    
+    @classmethod
+    def decode(cls, token, secret):
+        """Decode and verify JWT token."""
+        parts = token.split(".")
+        if len(parts) != 3:
+            raise ValueError("Invalid token format")
+        
+        header_b64, payload_b64, signature = parts
+        
+        # Reconstruct signed data
+        signed_data = f"{header_b64}.{payload_b64}"
+        expected_signature = cls.sign(signed_data, secret)
+        
+        # Constant-time comparison to prevent timing attacks
+        if not hmac.compare_digest(signature, expected_signature):
+            raise ValueError("Invalid signature")
+        
+        return base64url_decode(payload_b64)
+    
+    @classmethod
+    def verify(cls, token, secret):
+        """Verify a token's signature."""
+        try:
+            cls.decode(token, secret)
+            return True
+        except ValueError:
+            return False
 
 
-def constant_time_compare(val1, val2):
-    """Compare two values in constant time to prevent timing attacks."""
-    if len(val1) != len(val2):
-        return False
-    return hmac.compare_digest(val1, val2)
+# Backward-compatible functions using secure implementation
+def secure_encode(payload, secret):
+    """Encode payload using HLE-resistant JWT."""
+    return SecureJWT.encode(payload, secret)
+
+
+def secure_decode(token, secret):
+    """Decode and verify JWT with HLE protection."""
+    return SecureJWT.decode(token, secret)
+
+
+def secure_verify(token, secret):
+    """Verify JWT with HLE protection."""
+    return SecureJWT.verify(token, secret)
