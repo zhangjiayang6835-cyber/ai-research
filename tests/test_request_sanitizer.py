@@ -71,6 +71,19 @@ class TestTransferEncoding:
         assert not ok
 
 
+class TestHeaderValueValidation:
+    """Header values must not carry control characters."""
+
+    def test_rejects_crlf_in_header_value(self):
+        s = RequestSanitizer()
+        ok, err = s.validate({
+            b"host": b"example.com\r\nX-Evil: yes",
+            b"accept": b"text/html",
+        })
+        assert not ok
+        assert "Invalid header value" in err
+
+
 class TestDuplicateHeaders:
     """Single-value headers must not appear multiple times."""
 
@@ -111,6 +124,22 @@ class TestCacheKey:
             b"connection": b"close",
         }
         assert s.cache_key(h1) == s.cache_key(h2)
+
+
+class TestSanitizeHeaders:
+    """Forwarding-safe sanitization must drop hop-by-hop headers."""
+
+    def test_sanitizes_forward_headers(self):
+        s = RequestSanitizer()
+        cleaned = s.sanitize_headers({
+            b"Host": b"example.com",
+            b"Connection": b"keep-alive",
+            b"Accept": b"text/html",
+        })
+        assert cleaned == {
+            b"host": b"example.com",
+            b"accept": b"text/html",
+        }
 
 
 class TestHeaderNameValidation:

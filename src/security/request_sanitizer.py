@@ -8,11 +8,22 @@ Reference: https://portswigger.net/web-security/request-smuggling
 """
 
 import re
+from hashlib import sha256
 from typing import Optional, Tuple
 
 
 class RequestSanitizer:
     """Validates HTTP requests for smuggling & cache poisoning indicators."""
+
+    _HOP_BY_HOP = {
+        b"connection", b"keep-alive", b"proxy-authenticate",
+        b"proxy-authorization", b"te", b"trailers",
+        b"transfer-encoding", b"upgrade",
+    }
+
+    @staticmethod
+    def _has_control_bytes(value: bytes) -> bool:
+        return any(token in value for token in (b"\r", b"\n", b"\x00"))
 
     def validate(self, headers: dict) -> Tuple[bool, Optional[str]]:
         """
@@ -29,6 +40,13 @@ class RequestSanitizer:
 
         # ── Content-Length validation ──
         for key, value in headers.items():
+            if self._has_control_bytes(key):
+                return False, "HTTP 400: Invalid header name: control characters"
+            if self._has_control_bytes(value):
+                return False, (
+                    "HTTP 400: Invalid header value: "
+                    f"'{key.decode(errors='replace')}'"
+                )
             if key.lower() == b"content-length":
                 cl = value.strip()
                 if not cl.isdigit():
@@ -76,15 +94,27 @@ class RequestSanitizer:
         Strips hop-by-hop headers (RFC 7230 §6.1) and normalizes
         key ordering to prevent cache poisoning via header manipulation.
         """
-        hop_by_hop = {
-            b"connection", b"keep-alive", b"proxy-authenticate",
-            b"proxy-authorization", b"te", b"trailers",
-            b"transfer-encoding", b"upgrade",
-        }
-
+        sanitized = self.sanitize_headers(headers)
         normalized = {
-            k.lower().decode(): v.decode(errors="replace")
-            for k, v in sorted(headers.items(), key=lambda kv: kv[0].lower())
-            if k.lower() not in hop_by_hop
+            k.decode(errors="replace"): v.decode(errors="replace")
+            for k, v in sorted(sanitized.items(), key=lambda kv: kv[0].lower())
         }
-        return str(hash(frozenset(normalized.items())))
+        payload = repr(sorted(normalized.items())).encode()
+        return sha256(payload).hexdigest()
+
+    def sanitize_headers(self, headers: dict) -> dict:
+        """
+        Return a forwarding-safe header mapping.
+
+        Invalid inputs are rejected instead of being normalized into a
+        request that could be split or smuggled downstream.
+        """
+        ok, err = self.validate(headers)
+        if not ok:
+            raise ValueError(err or "HTTP 400: Invalid headers")
+
+        return {
+            key.lower(): value
+            for key, value in headers.items()
+            if key.lower() not in self._HOP_BY_HOP
+        }
