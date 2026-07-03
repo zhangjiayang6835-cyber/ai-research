@@ -104,16 +104,23 @@ def _create_jwt(payload: dict, secret: str) -> str:
 
 
 def _verify_jwt(token: str, secret: str) -> dict[str, Any] | None:
-    parts = token.split(".")
-    if len(parts) != 3:
-        return None
-    header_b64, body_b64, sig = parts
-    expected_sig = hmac.new(
-        secret.encode(), f"{header_b64}.{body_b64}".encode(), hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(sig, expected_sig):
-        return None
     try:
+        # Split token into header, payload, and signature
+        parts = token.split(".")
+        if len(parts) != 3:
+            return None
+        header_b64, body_b64, sig = parts
+
+        # Compute expected signature securely
+        expected_sig = hmac.new(
+            secret.encode(), f"{header_b64}.{body_b64}".encode(), hashlib.sha256
+        ).hexdigest()
+
+        # Constant-time comparison prevents timing + length extension attacks
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+
+        # Decode payload safely
         return json.loads(_b64decode(body_b64))
     except (json.JSONDecodeError, Exception):
         return None
