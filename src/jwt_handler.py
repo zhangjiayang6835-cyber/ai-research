@@ -1,105 +1,139 @@
 import hmac
 import hashlib
 import base64
-import secrets
+import json
 
 
 def base64url_encode(data):
-
-def sign(token, secret):
-    """Sign a token using HMAC-SHA256."""
-    return hmac.new(secret.encode(), token.encode(), hashlib.sha256).hexdigest()
-
-
-def encode(payload, secret):
-    header = base64url_encode('""')
-    payload_encoded = base64url_encode(payload)
-    token = f"{header}.{payload_encoded}"
-    signature = hmac.new(secret.encode(), token.encode(), hashlib.sha256).hexdigest()
-    return f"{token}.{signature}"
+    """Encode bytes to base64url string without padding."""
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    return base64.urlsafe_b64encode(data).rstrip(b'=').decode('ascii')
 
 
-    except (ValueError, IndexError):
-        raise ValueError("Invalid token format")
-
-    expected_signature = hmac.new(secret.encode(), f"{header}.{payload}".encode(), hashlib.sha256).hexdigest()
-
-    if not hmac.compare_digest(signature, expected_signature):
-        raise ValueError("Invalid signature")
-    return base64url_decode(payload)
+def base64url_decode(data):
+    """Decode base64url string to bytes, adding padding if needed."""
+    padding = 4 - len(data) % 4
+    if padding != 4:
+        data += '=' * padding
+    return base64.urlsafe_b64decode(data)
 
 
-def verify(token, secret):
-    """Verify a token's signature."""
-    try:
-        decode(token, secret)
-    except ValueError:
-        return False
-
-
-class SecureJWT:
-    """JWT implementation hardened against Hash Length Extension attacks."""
+class JWTHandler:
+    """
+    Secure JWT handler that prevents Hash Length Extension attacks.
     
-    @staticmethod
-    def _get_secret_key(secret):
-        """Derive a fixed-length key from secret to prevent HLE attacks."""
-        return hashlib.sha256(secret.encode()).digest()
+    VULNERABLE approach (DO NOT USE):
+        signature = hashlib.sha256(key + message).hexdigest()
     
-    @classmethod
-    def sign(cls, token, secret):
-        """Sign token with HMAC-SHA256 using fixed-length key."""
-        key = cls._get_secret_key(secret)
-        return hmac.new(key, token.encode(), hashlib.sha256).hexdigest()
+    SECURE approach (USE THIS):
+        signature = hmac.new(key, message, hashlib.sha256).hexdigest()
     
-    @classmethod
-    def encode(cls, payload, secret):
-        """Encode payload into JWT with secure signature."""
-        header = base64url_encode('{"alg":"HS256","typ":"JWT"}')
-        payload_encoded = base64url_encode(payload)
-        token = f"{header}.{payload_encoded}"
-        signature = cls.sign(token, secret)
-        return f"{token}.{signature}"
+    Hash Length Extension attacks exploit the Merkle-Damgård construction
+    used by MD5, SHA-1, SHA-256, etc. When using raw hash(key || message),
+    an attacker can append data to the message and forge a valid signature
+    without knowing the secret key.
     
-    @classmethod
-    def decode(cls, token, secret):
-        """Decode and verify JWT token."""
-        parts = token.split(".")
+    HMAC (Hash-based Message Authentication Code) is not vulnerable to this
+    attack because it uses a nested construction: H(K XOR opad || H(K XOR ipad || message)).
+    """
+    
+    def __init__(self, secret_key):
+        if isinstance(secret_key, str):
+            secret_key = secret_key.encode('utf-8')
+        self.secret_key = secret_key
+    
+    def _sign(self, header_b64, payload_b64):
+        """Create HMAC-SHA256 signature for JWT."""
+        message = f"{header_b64}.{payload_b64}".encode('utf-8')
+        # SECURE: Use HMAC instead of raw hash to prevent length extension attacks
+        signature = hmac.new(self.secret_key, message, hashlib.sha256).digest()
+        return base64url_encode(signature)
+    
+    def encode(self, payload, algorithm='HS256'):
+        """Encode payload into a JWT token."""
+        if algorithm != 'HS256':
+            raise ValueError("Only HS256 algorithm is supported")
+        
+        header = {"alg": algorithm, "typ": "JWT"}
+        header_b64 = base64url_encode(json.dumps(header, separators=(',', ':')).encode('utf-8'))
+        payload_b64 = base64url_encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
+        
+        signature_b64 = self._sign(header_b64, payload_b64)
+        
+        return f"{header_b64}.{payload_b64}.{signature_b64}"
+    
+    def decode(self, token, verify=True):
+        """Decode and verify a JWT token."""
+        parts = token.split('.')
         if len(parts) != 3:
-            raise ValueError("Invalid token format")
+            raise ValueError("Invalid JWT token format")
         
-        header_b64, payload_b64, signature = parts
+        header_b64, payload_b64, signature_b64 = parts
         
-        # Reconstruct signed data
-        signed_data = f"{header_b64}.{payload_b64}"
-        expected_signature = cls.sign(signed_data, secret)
+        # Verify signature before decoding
+        if verify:
+            expected_signature = self._sign(header_b64, payload_b64)
+            if not hmac.compare_digest(signature_b64, expected_signature):
+                raise ValueError("Invalid JWT signature")
         
-        # Constant-time comparison to prevent timing attacks
-        if not hmac.compare_digest(signature, expected_signature):
-            raise ValueError("Invalid signature")
-        
-        return base64url_decode(payload_b64)
+        payload_json = base64url_decode(payload_b64)
+        return json.loads(payload_json.decode('utf-8'))
+
+
+# Backward-compatible functions
+def create_jwt(payload, secret_key):
+    """Create a JWT token with HMAC-SHA256 signature."""
+    handler = JWTHandler(secret_key)
+    return handler.encode(payload)
+
+
+def verify_jwt(token, secret_key):
+    """Verify and decode a JWT token."""
+    handler = JWTHandler(secret_key)
+    return handler.decode(token)
+
+
+# Vulnerable implementation for reference (DO NOT USE IN PRODUCTION)
+class VulnerableJWTHandler:
+    """
+    DEMONSTRATION ONLY: This shows the vulnerable pattern.
     
-    @classmethod
-    def verify(cls, token, secret):
-        """Verify a token's signature."""
-        try:
-            cls.decode(token, secret)
-            return True
-        except ValueError:
-            return False
-
-
-# Backward-compatible functions using secure implementation
-def secure_encode(payload, secret):
-    """Encode payload using HLE-resistant JWT."""
-    return SecureJWT.encode(payload, secret)
-
-
-def secure_decode(token, secret):
-    """Decode and verify JWT with HLE protection."""
-    return SecureJWT.decode(token, secret)
-
-
-def secure_verify(token, secret):
-    """Verify JWT with HLE protection."""
-    return SecureJWT.verify(token, secret)
+   不同时使用HMAC,直接使用SHA-256哈希:
+        signature = hashlib.sha256(key + message).hexdigest()
+    
+    This is vulnerable to Hash Length Extension attacks because an attacker
+    who knows the signature for a message can compute the signature for
+    message || padding || extension without knowing the key.
+    """
+    
+    def __init__(self, secret_key):
+        if isinstance(secret_key, str):
+            secret_key = secret_key.encode('utf-8')
+        self.secret_key = secret_key
+    
+    def _sign(self, header_b64, payload_b64):
+        """VULNERABLE: Direct hash without HMAC."""
+        message = f"{header_b64}.{payload_b64}".encode('utf-8')
+        # VULNERABLE: This allows Hash Length Extension attacks!
+        signature = hashlib.sha256(self.secret_key + message).digest()
+        return base64url_encode(signature)
+    
+    def encode(self, payload, algorithm='HS256'):
+        header = {"alg": algorithm, "typ": "JWT"}
+        header_b64 = base64url_encode(json.dumps(header, separators=(',', ':')).encode('utf-8'))
+        payload_b64 = base64url_encode(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
+        signature_b64 = self._sign(header_b64, payload_b64)
+        return f"{header_b64}.{payload_b64}.{signature_b64}"
+    
+    def decode(self, token, verify=True):
+        parts = token.split('.')
+        if len(parts) != 3:
+            raise ValueError("Invalid JWT token format")
+        header_b64, payload_b64, signature_b64 = parts
+        if verify:
+            expected_signature = self._sign(header_b64, payload_b64)
+            if signature_b64 != expected_signature:
+                raise ValueError("Invalid JWT signature")
+        payload_json = base64url_decode(payload_b64)
+        return json.loads(payload_json.decode('utf-8'))
