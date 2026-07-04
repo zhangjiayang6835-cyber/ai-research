@@ -1,0 +1,12 @@
+{
+  "name": "ai-research-bounty-95",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Harness wrappers for Python security bounty fixes",
+  "scripts": {
+    "type-check": "python3 -m py_compile fix.py fixes/native_buffer_overflow_fix.py tests/test_native_buffer_overflow_fix.py",
+    "test": "python3 -m pytest -q tests/test_native_buffer_overflow_fix.py",
+    "lint": "python3 -m py_compile fix.py fixes/native_buffer_overflow_fix.py tests/test_native_buffer_overflow_fix.py",
+    "build": "python3 -m py_compile fix.py fixes/native_buffer_overflow_fix.py tests/test_native_buffer_overflow_fix.py"
+  }
+}
