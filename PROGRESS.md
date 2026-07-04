@@ -18,13 +18,13 @@
 
 ## 🔄 进行中
 
-- 准备提交 PR
+- PR 已创建: https://github.com/zhangjiayang6835-cyber/ai-research/pull/331
 
 ---
 
 ## 📋 待办
 
-- commit / push / PR
+- 等待维护者 review / merge
 
 ---
 
