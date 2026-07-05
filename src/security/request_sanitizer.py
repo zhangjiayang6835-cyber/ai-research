@@ -1,87 +1,55 @@
-"""
-HTTP Request Sanitizer — CWE-444 / CWE-524 Mitigation
-======================================================
-OWASP-compliant middleware for HTTP request smuggling detection
-and web cache poisoning prevention.
-
-Reference: https://portswigger.net/web-security/request-smuggling
-"""
-
 import re
 from typing import Optional, Tuple
 
-
 class RequestSanitizer:
-    """Validates HTTP requests for smuggling & cache poisoning indicators."""
-
     def validate(self, headers: dict) -> Tuple[bool, Optional[str]]:
-        """
-        Validate request headers for security issues.
+        has_cl = False
+        has_te = False
 
-        Returns:
-            (is_valid, error_message) — error_message is None if valid.
-        """
-        # ── CL/TE conflict (RFC 7230 §3.3.3) ──
-        has_cl = any(k.lower() == b"content-length" for k in headers)
-        has_te = any(k.lower() == b"transfer-encoding" for k in headers)
-        if has_cl and has_te:
-            return False, "HTTP 400: CL/TE conflict (RFC 7230 §3.3.3)"
-
-        # ── Content-Length validation ──
         for key, value in headers.items():
-            if key.lower() == b"content-length":
-                cl = value.strip()
+            kl = key.lower()
+            if kl == b"content-length":
+                has_cl = True
+                cl_vals = [v.strip() for v in value.split(b",")]
+                if len(set(cl_vals)) > 1:
+                    return False, "HTTP 400: Conflicting Content-Length values"
+                cl = cl_vals[0]
                 if not cl.isdigit():
                     return False, "HTTP 400: Content-Length not numeric"
                 if len(cl) > 1 and cl.startswith(b"0"):
                     return False, "HTTP 400: Content-Length has leading zeros"
                 if int(cl) < 0:
                     return False, "HTTP 400: Content-Length negative"
-
-        # ── Transfer-Encoding validation ──
-        for key, value in headers.items():
-            if key.lower() == b"transfer-encoding":
+            elif kl == b"transfer-encoding":
+                has_te = True
                 tv = value.strip().lower()
                 if tv in {b"", b"identity"}:
                     return False, "HTTP 400: Invalid Transfer-Encoding"
 
-        # ── Duplicate single-value header detection ──
-        singles = {b"content-length", b"content-type",
-                   b"host", b"transfer-encoding"}
+        if has_cl and has_te:
+            return False, "HTTP 400: CL/TE conflict (RFC 7230 §3.3.3)"
+
+        singles = {b"content-length", b"content-type", b"host", b"transfer-encoding"}
         seen = set()
         for key in headers:
             kl = key.lower()
             if kl in singles:
                 if kl in seen:
-                    return False, (
-                        f"HTTP 400: Duplicate header: "
-                        f"'{key.decode(errors='replace')}'"
-                    )
+                    return False, f"HTTP 400: Duplicate header: '{key.decode(errors='replace')}'"
                 seen.add(kl)
 
-        # ── Header name character check (RFC 7230 §3.2.6) ──
         for key in headers:
             if not re.match(rb"^[a-zA-Z0-9!#$%%&'*+.^_`|~-]+$", key):
-                return False, (
-                    "HTTP 400: Invalid header name: "
-                    f"'{key.decode(errors='replace')}'"
-                )
+                return False, f"HTTP 400: Invalid header name: '{key.decode(errors='replace')}'"
 
         return True, None
 
     def cache_key(self, headers: dict) -> str:
-        """
-        Build a deterministic cache key.
-
-        Strips hop-by-hop headers (RFC 7230 §6.1) and normalizes
-        key ordering to prevent cache poisoning via header manipulation.
-        """
         hop_by_hop = {
             b"connection", b"keep-alive", b"proxy-authenticate",
             b"proxy-authorization", b"te", b"trailers",
             b"transfer-encoding", b"upgrade",
         }
-
         normalized = {
             k.lower().decode(): v.decode(errors="replace")
             for k, v in sorted(headers.items(), key=lambda kv: kv[0].lower())
