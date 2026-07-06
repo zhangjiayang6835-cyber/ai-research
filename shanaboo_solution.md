@@ -1,181 +1,176 @@
  ```diff
---- a/fix-sidecar-injection.py
-+++ b/fix-sidecar-injection.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python3
+--- a/fix.py
++++ b/fix.py
+@@ -0,0 +1,0 @@
+-# Placeholder fix file - needs to be replaced with actual BGP hijacking TLS bypass fix
 +#!/usr/bin/env python3
- """
- Fix for Sidecar Injection vulnerability in Kubernetes-like environments.
- This script patches the admission controller to properly validate pod specs.
-@@ -6,6 +6,7 @@
- 
- import json
- import re
++"""
++BGP Hijacking Simulation → TLS Certificate Bypass Fix
++
++This module provides secure TLS certificate verification that prevents
++BGP hijacking attacks by properly validating certificates and using
++certificate pinning where appropriate.
++"""
++
 +import ssl
- import sys
- from typing import Dict, List, Optional
- 
-@@ -15,6 +16,7 @@
-     from cryptography import x509
-     from cryptography.hazmat.primitives import hashes, serialization
-     from cryptography.hazmat.primitives.asymmetric import rsa
-+    from urllib.request import urlopen, Request
- except ImportError:
-     print("Required dependencies not installed. Run: pip install cryptography requests")
-     sys.exit(1)
-@@ -22,6 +24,7 @@
- 
- # Configuration
- ALLOWED_SIDECAR_IMAGES = ["istio/proxyv2:", "linkerd/proxy:", "vault-agent:"]
-+TLS_VERIFY_DEPTH = 2
- 
- 
- class SidecarInjectionFix:
-@@ -29,6 +32,7 @@ class SidecarInjectionFix:
-     
-     def __init__(self):
-         self.allowed_images = set(ALLOWED_SIDECAR_IMAGES)
-+        self.ssl_context = self._create_secure_ssl_context()
-     
-     def validate_pod_spec(self, pod_spec: Dict) -> bool:
-         """
-@@ -80,6 +84,56 @@ class SidecarInjectionFix:
-         
-         return True
-     
-+    def _create_secure_ssl_context(self) -> ssl.SSLContext:
-+        """Create a secure SSL context with certificate pinning."""
-+        context = ssl.create_default_context()
-+        context.minimum_version = ssl.TLSVersion.TLSv1_2
-+        context.verify_mode = ssl.CERT_REQUIRED
-+        context.check_hostname = True
-+        context.verify_flags |= ssl.VERIFY_X509_STRICT
-+        return context
++import socket
++import hashlib
++import base64
++from urllib.parse import urlparse
++from typing import Optional, Dict, Set
++import logging
++
++logger = logging.getLogger(__name__)
++
++
++class CertificatePinStore:
++    """
++    Secure certificate pin store for critical domains.
++    Prevents BGP hijacking by ensuring certificates match expected pins.
++    """
 +    
-+    def verify_tls_certificate(self, hostname: str, port: int = 443) -> bool:
-+        """
-+        Verify TLS certificate with proper hostname validation.
-+        Prevents BGP hijacking → TLS certificate bypass.
-+        """
-+        try:
-+            with ssl.create_default_context() as context:
-+                context.minimum_version = ssl.TLSVersion.TLSv1_2
-+                context.verify_mode = ssl.CERT_REQUIRED
-+                context.check_hostname = True
-+                context.verify_flags |= ssl.VERIFY_X509_STRICT
-+                
-+                # Set maximum certificate chain depth
-+                context.verify_depth = TLS_VERIFY_DEPTH
-+                
-+                with socket.create_connection((hostname, port), timeout=10) as sock:
-+                    with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-+                        # Get certificate info
-+                        cert = ssock.getpeercert()
-+                        cipher = ssock.cipher()
-+                        version = ssock.version()
-+                        
-+                        # Verify minimum TLS version
-+                        if version not in ('TLSv1.2', 'TLSv1.3'):
-+                            return False
-+                        
-+                        # Verify certificate has not expired
-+                        import datetime
-+                        not_after = cert.get('notAfter')
-+                        if not_after:
-+                            not_after_date = datetime.datetime.strptime(
-+                                not_after, '%b %d %H:%M:%S %Y %Z'
-+                            )
-+                            if not_after_date < datetime.datetime.utcnow():
-+                                return False
-+                        
-+                        return True
-+                        
-+        except ssl.CertificateError as e:
-+            print(f"Certificate verification failed for {hostname}: {e}")
-+            return False
-+        except Exception as e:
-+            print(f"TLS connection failed for {hostname}: {e}")
-+            return False
++    def __init__(self):
++        self._pins: Dict[str, Set[str]] = {}
++        self._lock = None  # Simple implementation, use threading.Lock in production
 +    
-     def patch_admission_controller(self, webhook_config: Dict) -> Dict:
-         """
-         Patch the admission controller to enforce strict validation.
-@@ -91,6 +145,12 @@ class SidecarInjectionFix:
-         if "webhooks" not in webhook_config:
-             raise ValueError("Invalid webhook configuration")
-         
-+        # Verify TLS for all webhook servers
-+        for webhook in webhook_config.get("webhooks", []):
-+            client_config = webhook.get("clientConfig", {})
-+            if "url" in client_config:
-+                # Extract hostname and verify TLS
-+                pass
++    def add_pin(self, hostname: str, pin: str) -> None:
++        """Add a known good certificate pin for a hostname."""
++        if hostname not in self._pins:
++            self._pins[hostname] = set()
++        self._pins[hostname].add(pin)
++    
++    def verify_pin(self, hostname: str, cert_der: bytes) -> bool:
++        """Verify a certificate against stored pins."""
++        if hostname not in self._pins:
++            # No pin for this host - require explicit pin or use other validation
++            logger.warning(f"No certificate pin for {hostname}")
++            return False
 +        
-         for webhook in webhook_config.get("webhooks", []):
-             # Ensure failure policy is Fail (not Ignore)
-             webhook["failurePolicy"] = "Fail"
-@@ -107,6 +167,7 @@ class SidecarInjectionFix:
-         return webhook_config
- 
- 
-+# BGP Hijacking → TLS Certificate Bypass Fix
- class TLSCertificateValidator:
-     """
-     Validates TLS certificates to prevent BGP hijacking attacks.
-@@ -116,6 +177,7 @@ class TLSCertificateValidator:
-         self.trusted_cas = set()
-         self.crl_cache = {}
-         self.ocsp_cache = {}
-+        self.pinned_cert_hashes = {}
-     
-     def validate_certificate_chain(self, cert_pem: str, hostname: str) -> bool:
-         """
-@@ -126,6 +188,10 @@ class TLSCertificateValidator:
-             cert = x509.load_pem_x509_certificate(cert_pem.encode())
-             cert_subject = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
-             
-+            # Verify certificate matches hostname
-+            if not self._verify_hostname(cert, hostname):
-+                return False
-+            
-             # Check certificate validity period
-             if not self._check_validity_period(cert):
-                 return False
-@@ -136,6 +202,10 @@ class TLSCertificateValidator:
-             # Verify certificate chain
-             if not self._verify_chain(cert_pem):
-                 return False
-+            
-+            # Check for certificate pinning
-+            if not self._check_pinning(cert, hostname):
-+                return False
-             
-             return True
-             
-@@ -143,6 +213,26 @@ class TLSCertificateValidator:
-             print(f"Certificate validation error: {e}")
-             return False
-     
-+    def _verify_hostname(self, cert: x509.Certificate, hostname: str) -> bool:
-+        """Verify certificate matches the expected hostname."""
++        # Calculate SPKI hash (Subject Public Key Info)
 +        try:
-+            # Check Common Name
-+            cn_attrs = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
-+            for attr in cn_attrs:
-+                if attr.value == hostname:
-+                    return True
++            from cryptography import x509
++            from cryptography.hazmat.primitives import serialization
 +            
-+            # Check Subject Alternative Names
-+            san_ext = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
-+            if san_ext:
-+                for name in san_ext.value.get_values_for_type(x509.DNSName):
-+                    if name == hostname or name.startswith('*.'):
-+                        return True
++            cert = x509.load_der_x509_certificate(cert_der)
++            spki = cert.public_key().public_bytes(
++                serialization.Encoding.DER,
++                serialization.PublicFormat.SubjectPublicKeyInfo
++            )
++            pin = base64.b64encode(hashlib.sha256(spki).digest()).decode('ascii')
 +            
-+            return False
-+            
-+        except Exception:
-+            return False
++            return pin in self._pins[hostname]
++        except ImportError:
++            # Fallback: hash the entire certificate
++            pin = base64.b64encode(hashlib.sha256(cert_der).digest()).decode('ascii')
++            fallback_pin = hashlib.sha256(cert_der).hexdigest()
++            return pin in self._pins[hostname] or fallback_pin in self._pins[hostname]
++
++
++class SecureTLSContext:
++    """
++    Creates a secure TLS context with proper certificate validation
++    to prevent BGP hijacking and man-in-the-middle attacks.
++    """
 +    
-     def _check_validity_period(self, cert: x509.Certificate) -> bool:
-         """Check if certificate is
++    # Known certificate transparency log endpoints
++    CT_LOGS = [
++        "ct.googleapis.com",
++        "ct1.digicert-ct.com",
++    ]
++    
++    def __init__(self, verify_mode: int = ssl.CERT_REQUIRED):
++        self.context = ssl.create_default_context()
++        self.context.verify_mode = verify_mode
++        self.context.check_hostname = True
++        self.context.minimum_version = ssl.TLSVersion.TLSv1_2
++        
++        # Disable insecure protocols
++        self.context.options |= ssl.OP_NO_SSLv2
++        self.context.options |= ssl.OP_NO_SSLv3
++        self.context.options |= ssl.OP_NO_TLSv1
++        self.context.options |= ssl.OP_NO_TLSv1_1
++        
++        # Certificate pinning store
++        self.pin_store = CertificatePinStore()
++        
++        # Track expected hostnames to detect hijacking
++        self._expected_hosts: Dict[str, str] = {}
++    
++    def set_expected_ip(self, hostname: str, expected_ip: str) -> None:
++        """
++        Set the expected IP address for a hostname.
++        Helps detect BGP hijacking where DNS resolves to wrong IP.
++        """
++        self._expected_hosts[hostname] = expected_ip
++    
++    def add_trusted_pin(self, hostname: str, pin: str) -> None:
++        """Add a certificate pin for a hostname."""
++        self.pin_store.add_pin(hostname, pin)
++    
++    def _verify_ip_not_hijacked(self, hostname: str, resolved_ip: str) -> bool:
++        """Check if the resolved IP matches expected IP for hostname."""
++        if hostname not in self._expected_hosts:
++            return True  # No expectation set
++        return self._expected_hosts[hostname] == resolved_ip
++    
++    def create_secure_connection(
++        self,
++        url: str,
++        timeout: float = 30.0,
++        port: Optional[int] = None
++    ) -> ssl.SSLSocket:
++        """
++        Create a secure connection with full verification.
++        
++        Args:
++            url: The URL to connect to
++            timeout: Connection timeout in seconds
++            port: Optional port override
++            
++        Returns:
++            ssl.SSLSocket: Verified secure socket
++            
++        Raises:
++            ssl.SSLError: If certificate validation fails
++            ConnectionError: If BGP hijacking is detected
++        """
++        parsed = urlparse(url)
++        hostname = parsed.hostname or url
++        default_port = 443 if parsed.scheme == 'https' else 80
++        target_port = port or parsed.port or default_port
++        
++        # Resolve IP and check for potential hijacking
++        try:
++            addr_info = socket.getaddrinfo(hostname, target_port, 
++                                           socket.AF_INET, socket.SOCK_STREAM)
++            if not addr_info:
++                raise ConnectionError(f"Could not resolve {hostname}")
++            
++            resolved_ip = addr_info[0][4][0]
++            
++            # Check for BGP hijacking via unexpected IP
++            if not self._verify_ip_not_hijacked(hostname, resolved_ip):
++                raise ConnectionError(
++                    f"Potential BGP hijacking detected: "
++                    f"{hostname} resolved to unexpected IP {resolved_ip}. "
++                    f"Expected: {self._expected_hosts[hostname]}"
++                )
++                
++        except socket.gaierror as e:
++            raise ConnectionError(f"DNS resolution failed for {hostname}: {e}")
++        
++        # Create connection with certificate verification
++        try:
++            with socket.create_connection((hostname, target_port), 
++                                          timeout=timeout) as sock:
++                
++                # Wrap with TLS
++                with self.context.wrap_socket(
++                    sock, 
++                    server_hostname=hostname
++                ) as ssock:
++                    # Get certificate for additional verification
++                    cert = ssock.getpeercert(binary_form=True)
++                    
++                    if cert:
++                        # Verify certificate pin if
