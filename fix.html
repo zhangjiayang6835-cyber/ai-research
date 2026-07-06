@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Password Input - Autocomplete Fix</title>
+</head>
+<body>
+    <h2>Login Form (Fixed)</h2>
+    <form action="/login" method="post">
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" 
+                   autocomplete="new-password" 
+                   oncopy="return false;" oncut="return false;" 
+                   placeholder="Enter your password" required>
+        </div>
+        <div>
+            <input type="submit" value="Login">
+        </div>
+    </form>
+    <script>
+        // Additional JavaScript protection to prevent clipboard leakage
+        (function() {
+            const pwdField = document.getElementById('password');
+            if (pwdField) {
+                ['copy', 'cut'].forEach(function(eventType) {
+                    pwdField.addEventListener(eventType, function(e) {
+                        e.preventDefault();
+                        alert('Copying password to clipboard is not allowed for security.');
+                    });
+                });
+                // Allow paste but not copy
+                // Optionally, prevent autocomplete via script (though attribute handles it)
+                pwdField.setAttribute('autocomplete', 'new-password');
+            }
+        })();
+    </script>
+</body>
+</html>
