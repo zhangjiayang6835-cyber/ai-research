@@ -1,0 +1,12 @@
+from flask import Flask, request, render_template
+
+app = Flask(__name__)
+
+@app.route("/error")
+def error_page():
+    msg = request.args.get("msg", "Unknown error")
+    # Fix: use render_template with a separate template file and pass msg as context
+    return render_template("error.html", msg=msg)
+
+if __name__ == "__main__":
+    app.run()
