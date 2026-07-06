@@ -1,0 +1,10 @@
+{
+  "name": "@mycompany/internal-package",
+  "version": "1.0.0",
+  "description": "Internal package with scoped name to prevent dependency confusion",
+  "main": "index.js",
+  "scripts": {
+    "verify": "node verifyDependencies.js"
+  },
+  "dependencies": {}
+}
