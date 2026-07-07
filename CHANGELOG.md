@@ -20,6 +20,28 @@ Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: CRLF Injection to
 
 Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: TCP Timestamp Side Channel → Cloud Provider Identification for #320 (#398)
 
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @Daniel Shanahan\n- @AI Training Bot\n- @Tito Linganiso\n- @Hermes Agent\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: apply solution for issue #605\n- fix: apply solution for issue #605\n- fix: apply solution for issue #605\n- fix: apply solution for issue #605\n- fix: apply solution for issue #136 (#304)\n- fix: apply solution for issue #431 (#454)\n- fix: Apache/NGINX Misconfiguration → Source Code Disclosure + RCE for #323\n- fix: Flash Loan Attack → Oracle Manipulation → Liquidation for #322\n- fix: Second-Order SQL Injection in Stored Procedure Chain for #340 (#385)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Web Cache Deception + Session Fixation Combined for #339 (#386)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Docker Container Escape via Mounted Docker Socket for #338 (#387)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Uniswap V3 TWAP Oracle Manipulation via Flash Swap for #337 (#389)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Supply Chain Attack via Dependency Confusion + Typosquatting for #336 (#390)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: GraphQL Depth Bypass + Batching → Data Exfiltration for #335 (#391)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Path Traversal + Log Poisoning → RCE Chain for #334 (#392)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: WebAssembly Memory Corruption → Sandbox Escape for #333 (#393)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Timing-Based Blind Data Extraction via Race Window for #324 (#394)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: CRLF Injection to HTTP Response Splitting + Cache Poisoning for #321 (#397)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: TCP Timestamp Side Channel → Cloud Provider Identification for #320 (#398)
+
 Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Padding Oracle Attack on Encrypted Session Cookies for #268 (#399)
 
 Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n\n### 👥 贡献者\n\n- @Daniel Shanahan\n- @AI Training Bot\n- @github-actions[bot]\n- @Tito Linganiso\n- @Hermes Agent\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: apply solution for issue #431 (#454)\n- fix: Apache/NGINX Misconfiguration → Source Code Disclosure + RCE for #323\n- fix: Flash Loan Attack → Oracle Manipulation → Liquidation for #322\n- fix: Second-Order SQL Injection in Stored Procedure Chain for #340 (#385)
