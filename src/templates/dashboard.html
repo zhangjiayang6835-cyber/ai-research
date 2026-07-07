@@ -1,0 +1,23 @@
+<!-- Security-hardened dashboard template -->
+<!DOCTYPE html>
+<html>
+<head>
+    <h1>User Dashboard</h1>
+    <p>Welcome, {{ username | e }}!</p>
+    
+    <!-- CSRF protected form with token -->
+    <form action="/change_email" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input name="email" placeholder="New Email">
+        <button type="submit">Change Email</button>
+    </form>
+    
+    <!-- CSRF protected form with token -->
+    <form action="/transfer" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input name="amount" placeholder="Amount">
+        <input name="to" placeholder="To User">
+        <button type="submit">Transfer</button>
+    </form>
+</body>
+</html>
