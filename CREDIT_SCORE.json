@@ -1,1 +1,68 @@
-{}
+{
+  "Rachaelisa": {
+    "total_honey": 1410,
+    "credit_score": 100.0,
+    "task_count": 43,
+    "grade": "diamond"
+  },
+  "yk578": {
+    "total_honey": 575,
+    "credit_score": 40.8,
+    "task_count": 25,
+    "grade": "gold"
+  },
+  "hero-infosec": {
+    "total_honey": 525,
+    "credit_score": 37.2,
+    "task_count": 14,
+    "grade": "gold"
+  },
+  "danielalanbates": {
+    "total_honey": 515,
+    "credit_score": 36.5,
+    "task_count": 13,
+    "grade": "gold"
+  },
+  "foxyManTou": {
+    "total_honey": 220,
+    "credit_score": 15.6,
+    "task_count": 10,
+    "grade": "silver"
+  },
+  "bambooshadow-studio": {
+    "total_honey": 105,
+    "credit_score": 7.4,
+    "task_count": 14,
+    "grade": "bronze"
+  },
+  "MRhuang1106": {
+    "total_honey": 65,
+    "credit_score": 4.6,
+    "task_count": 4,
+    "grade": "bronze"
+  },
+  "merlinsantiago982-cmd": {
+    "total_honey": -35,
+    "credit_score": -2.5,
+    "task_count": 1,
+    "grade": "participant"
+  },
+  "jhaayushkumar": {
+    "total_honey": -210,
+    "credit_score": -14.9,
+    "task_count": 6,
+    "grade": "participant"
+  },
+  "namdamdoi68-oss": {
+    "total_honey": 300,
+    "credit_score": 21.3,
+    "task_count": 4,
+    "grade": "silver"
+  },
+  "Zubi-fix": {
+    "total_honey": 100,
+    "credit_score": 7.1,
+    "task_count": 3,
+    "grade": "bronze"
+  }
+}
