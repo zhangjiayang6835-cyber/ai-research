@@ -1,4 +1,24 @@
-# Changelog\n\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: auto-patch for issue #344 (#346)
+# Changelog\n\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: auto-patch for issue #270 (#286)
+
+* fix: auto-patch for issue #271
+
+* fix: auto-patch for issue #270
+
+---------
+
+Co-authored-by: Crazy Monkey <crazy-monkey@users.noreply.github.com>\n- fix: auto-patch for issue #344 (#346)
+
+* fix: auto-patch for issue #271
+
+* fix: auto-patch for issue #270
+
+* fix: auto-patch for issue #323
+
+* fix: auto-patch for issue #344
+
+---------
+
+Co-authored-by: Crazy Monkey <crazy-monkey@users.noreply.github.com>\n- fix: add safe yaml config loader\n- fix: prevent template engine ssti rce\n- fix: add second order sql injection guard (#349)\n- fix: break xss csrf account takeover chain (#350)\n- fix: harden path and log handling (#351)\n- fix: guard graphql depth and batching (#352)\n- fix: prevent cache deception session fixation (#353)\n- fix: guard websocket origin and sessions (#354)\n- fix: prevent docker socket escape (#355)\n- fix: guard dependency confusion (#356)\n- fix: prevent defi withdrawal reentrancy (#358)\n- fix: render email templates from trusted ids (#360)\n- fix: prevent distributed double spending (#361)\n- fix: guard grpc reflection access (#362)\n- fix: block blind ssti sandbox rce (#363)\n- fix: prevent prototype pollution dom xss (#364)\n- fix: guard solidity token arithmetic (#365)\n- fix: prevent upload race conditions (#367)\n- fix: guard file downloads against traversal (#368)\n- fix: prevent email normalization takeover (#369)\n- fix: harden jwt key selection (#370)\n- fix: block jki auth bypass (#371)\n- fix: prevent ldap auth injection (#373)\n- fix: reject jwt none algorithm (#374)\n- fix: prevent mass assignment privilege escalation (#375)\n- fix: prevent xs search enumeration (#376)\n- fix: block log4j jndi lookup injection (#384)\n- fix: prevent password clipboard exposure (#388)\n\n### 👥 贡献者\n\n- @tai baihu\n- @github-actions[bot]\n- @nexicturbo\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: auto-patch for issue #344 (#346)
 
 * fix: auto-patch for issue #271
 
