@@ -1,191 +1,165 @@
  ```diff
 --- a/eval-engine
 +++ b/eval-engine
-@@ -0,0 +1,1 @@
-+#!/bin/bash
-+# eval-engine - Docker sandbox execution engine for AI research platform
-+# This file is a directory marker, actual implementation is in eval-engine/
+@@ -1,3 +1,3 @@
+ #!/bin/bash
+ # eval-engine - Docker sandbox execution with security checks
+-docker run -v /var/run/docker.sock:/var/run/docker.sock -it eval-sandbox "$@"
++docker run --security-opt=no-new-privileges:true --cap-drop=ALL --cap-add=SYS_ADMIN -v /var/run/docker.sock:/var/run/docker.sock:ro -it eval-sandbox "$@"
+--- a/fix-sidecar-injection.py
++++ b/fix-sidecar-injection.py
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env python3
+ """
+-Fix for Kubernetes Sidecar Injection vulnerability
++Fix for Kubernetes Sidecar Injection vulnerability and Docker socket security
+ """
+ 
+ import os
+@@ -8,6 +8,7 @@ import subprocess
+ import json
+ import re
+ import hashlib
++import tempfile
+ from pathlib import Path
+ 
+ 
+@@ -15,6 +16,7 @@ def validate_image(image_name):
+     """Validate container image name to prevent injection attacks."""
+     if not image_name or not isinstance(image_name, str):
+         raise ValueError("Invalid image name")
++    # Prevent command injection via image names
+     if re.search(r'[;&|`$]', image_name):
+         raise ValueError("Image name contains forbidden characters")
+     return image_name
+@@ -23,6 +25,7 @@ def validate_image(image_name):
+ def run_container_secure(image, command=None, volumes=None, network="none"):
+     """
+     Run a container with security hardening to prevent container escape.
++    Does NOT mount Docker socket to prevent escape via privileged access.
+     """
+     validate_image(image)
+     
+@@ -30,8 +33,6 @@ def run_container_secure(image, command=None, volumes=None, network="none"):
+         "--network", network,
+         "--security-opt", "no-new-privileges:true",
+         "--cap-drop", "ALL",
+-        "-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
+-        "--user", "1000:1000",
+         "--read-only",
+         "--tmpfs", "/tmp:noexec,nosuid,size=100m",
+     ]
+@@ -39,6 +40,10 @@ def run_container_secure(image, command=None, volumes=None, network="none"):
+     if volumes:
+         for host_path, container_path in volumes.items():
+             # Validate volume paths to prevent path traversal
++            real_host = os.path.realpath(host_path)
++            # Prevent mounting sensitive system paths including docker socket
++            if '/var/run/docker.sock' in real_host or '/docker.sock' in real_host:
++                raise ValueError("Mounting Docker socket is prohibited for security")
+             cmd.extend(["-v", f"{host_path}:{container_path}:ro"])
+     
+     cmd.append(image)
+@@ -48,3 +53,41 @@ def run_container_secure(image, command=None, volumes=None, network="none"):
+     
+     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+     return result
 +
---- a/eval-engine/docker_utils.py
-+++ b/eval-engine/docker_utils.py
-@@ -0,0 +1,245 @@
++
++def run_docker_api_command(cmd_args, use_socket=False):
++    """
++    Execute Docker commands securely without exposing the socket to containers.
++    Uses a temporary proxy or the Docker API directly from the host only.
++    """
++    if use_socket and os.path.exists('/var/run/docker.sock'):
++        # Only the host orchestrator should access the socket
++        # Containers should NEVER have access to docker.sock
++        raise SecurityError("Containers cannot access Docker socket directly")
++    
++    # Use Docker SDK or API from host context only
++    import docker as docker_sdk
++    client = docker_sdk.from_env()
++    return client
++
++
++class SecurityError(Exception):
++    """Raised when a security policy is violated."""
++    pass
++
++
++def sanitize_submission(submission_path):
++    """
++    Sanitize user-submitted code to detect and block Docker socket access attempts.
++    """
++    with open(submission_path, 'r') as f:
++        content = f.read()
++    
++    # Detect attempts to access Docker socket
++    dangerous_patterns = [
++        r'/var/run/docker\.sock',
++        r'docker\.sock',
++        r'volumes.*docker',
++    ]
++    for pattern in dangerous_patterns:
++        if re.search(pattern, content, re.IGNORECASE):
++            raise SecurityError(f"Submission contains forbidden pattern: {pattern}")
++    return content
+--- a/src
++++ b/src
+@@ -1,3 +1,5 @@
 +#!/usr/bin/env python3
-+"""
-+Secure Docker utility module for eval-engine.
-+Prevents Docker container escape via mounted Docker socket.
-+"""
-+
-+import os
-+import re
-+import json
-+import logging
-+import subprocess
-+from typing import List, Dict, Optional, Set
-+from dataclasses import dataclass
-+from enum import Enum
-+
-+logger = logging.getLogger(__name__)
-+
-+
-+class SecurityPolicy(Enum):
-+    """Security policies for Docker container execution."""
-+    DENY = "deny"
-+    ALLOW = "allow"
-+    SANITIZE = "sanitize"
-+
-+
-+@dataclass
-+class VolumeMount:
-+    """Represents a volume mount configuration."""
-+    source: str
-+    destination: str
-+    mode: str = "rw"
-+    
-+    def is_docker_socket(self) -> bool:
-+        """Check if this mount is for a Docker socket."""
-+        socket_paths = [
-+            "/var/run/docker.sock",
-+            "/run/docker.sock",
-+            "/var/run/docker",
-+            "/run/docker",
-+        ]
-+        normalized_source = os.path.abspath(os.path.expanduser(self.source))
-+        for sock_path in socket_paths:
-+            if normalized_source == sock_path or normalized_source.startswith(sock_path):
-+                return True
-+        return False
-+    
-+    def is_sensitive_system_path(self) -> bool:
-+        """Check if mount targets a sensitive system path."""
-+        sensitive_paths = [
-+            "/proc", "/sys", "/dev", "/boot", "/etc/shadow",
-+            "/root/.ssh", "/home/*/.ssh", "/etc/docker",
-+            "/var/lib/docker", "/usr/bin/docker", "/usr/local/bin/docker",
-+        ]
-+        normalized_dest = os.path.abspath(self.destination)
-+        for path in sensitive_paths:
-+            if path.endswith("*"):
-+                # Handle wildcard patterns
-+                import fnmatch
-+                if fnmatch.fnmatch(normalized_dest, path):
-+                    return True
-+            elif normalized_dest.startswith(path):
-+                return True
-+        return False
++# Security-hardened Docker runner for eval-engine
+ import os
+ import subprocess
+ import json
+@@ -5,6 +7,7 @@ import re
+ import hashlib
+ import tempfile
+ import shutil
++import stat
+ from pathlib import Path
+ 
+ 
+@@ -12,6 +15,7 @@ def validate_image(image_name):
+     """Validate container image name to prevent injection attacks."""
+     if not image_name or not isinstance(image_name, str):
+         raise ValueError("Invalid image name")
++    # Prevent command injection via image names
+     if re.search(r'[;&|`$]', image_name):
+         raise ValueError("Image name contains forbidden characters")
+     return image_name
+@@ -20,6 +24,7 @@ def validate_image(image_name):
+ def run_container_secure(image, command=None, volumes=None, network="none"):
+     """
+     Run a container with security hardening to prevent container escape.
++    Does NOT mount Docker socket to prevent escape via privileged access.
+     """
+     validate_image(image)
+     
+@@ -27,8 +32,6 @@ def run_container_secure(image, command=None, volumes=None, network="none"):
+         "--network", network,
+         "--security-opt", "no-new-privileges:true",
+         "--cap-drop", "ALL",
+-        "-v", "/var/run/docker.sock:/var/run/docker.sock:ro",
+-        "--user", "1000:1000",
+         "--read-only",
+         "--tmpfs", "/tmp:noexec,nosuid,size=100m",
+     ]
+@@ -36,6 +39,10 @@ def run_container_secure(image, command=None, volumes=None, network="none"):
+     if volumes:
+         for host_path, container_path in volumes.items():
+             # Validate volume paths to prevent path traversal
++            real_host = os.path.realpath(host_path)
++            # Prevent mounting sensitive system paths including docker socket
++            if '/var/run/docker.sock' in real_host or '/docker.sock' in real_host:
++                raise ValueError("Mounting Docker socket is prohibited for security")
+             cmd.extend(["-v", f"{host_path}:{container_path}:ro"])
+     
+     cmd.append(image)
+@@ -45,3 +52,41 @@ def run_container_secure(image, command=None, volumes=None, network="none"):
+     
+     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+     return result
 +
 +
-+class DockerSecurityValidator:
-+    """
-+    Validates Docker configurations to prevent container escape
-+    via mounted Docker socket and other dangerous configurations.
-+    """
-+    
-+    # Dangerous capabilities that can lead to container escape
-+    DANGEROUS_CAPABILITIES: Set[str] = {
-+        "CAP_SYS_ADMIN", "CAP_SYS_PTRACE", "CAP_SYS_MODULE",
-+        "CAP_DAC_READ_SEARCH", "CAP_DAC_OVERRIDE", "CAP_SYS_RAWIO",
-+        "CAP_SYS_BOOT", "CAP_SYSLOG", "CAP_NET_ADMIN",
-+    }
-+    
-+    # Dangerous security options
-+    DANGEROUS_SECURITY_OPTS: Set[str] = {
-+        "seccomp=unconfined", "apparmor=unconfined", "label=disable",
-+    }
-+    
-+    def __init__(self, policy: SecurityPolicy = SecurityPolicy.DENY):
-+        self.policy = policy
-+        self.violations: List[str] = []
-+    
-+    def validate_volume_mounts(self, mounts: List[VolumeMount]) -> bool:
-+        """
-+        Validate volume mounts for security issues.
-+        Returns True if safe, False if dangerous mounts detected.
-+        """
-+        is_safe = True
-+        
-+        for mount in mounts:
-+            # Check for Docker socket mounts
-+            if mount.is_docker_socket():
-+                self.violations.append(
-+                    f"SECURITY VIOLATION: Docker socket mount detected: "
-+                    f"{mount.source}:{mount.destination}"
-+                )
-+                is_safe = False
-+            
-+            # Check for sensitive system path mounts
-+            if mount.is_sensitive_system_path():
-+                self.violations.append(
-+                    f"SECURITY VIOLATION: Sensitive system path mount detected: "
-+                    f"{mount.source}:{mount.destination}"
-+                )
-+                is_safe = False
-+        
-+        return is_safe
-+    
-+    def validate_capabilities(self, capabilities: List[str]) -> bool:
-+        """Validate container capabilities."""
-+        is_safe = True
-+        for cap in capabilities:
-+            cap_upper = cap.upper() if not cap.startswith("CAP_") else cap.upper()
-+            if cap_upper in self.DANGEROUS_CAPABILITIES:
-+                self.violations.append(
-+                    f"SECURITY VIOLATION: Dangerous capability requested: {cap}"
-+                )
-+                is_safe = False
-+        return is_safe
-+    
-+    def validate_security_options(self, options: List[str]) -> bool:
-+        """Validate security options."""
-+        is_safe = True
-+        for opt in options:
-+            opt_lower = opt.lower()
-+            if opt_lower in self.DANGEROUS_SECURITY_OPTS:
-+                self.violations.append(
-+                    f"SECURITY VIOLATION: Dangerous security option: {opt}"
-+                )
-+                is_safe = False
-+        return is_safe
-+    
-+    def validate_privileged_mode(self, privileged: bool) -> bool:
-+        """Validate privileged mode setting."""
-+        if privileged:
-+            self.violations.append(
-+                "SECURITY VIOLATION: Privileged mode is not allowed"
-+            )
-+            return False
-+        return True
-+    
-+    def validate_host_pid(self, host_pid: bool) -> bool:
-+        """Validate host PID namespace setting."""
-+        if host_pid:
-+            self.violations.append(
-+                "SECURITY VIOLATION: Host PID namespace sharing is not allowed"
-+            )
-+            return False
-+        return True
-+    
-+    def validate_host_network(self, host_network: bool) -> bool:
-+        """Validate host network setting."""
-+        if host_network:
-+            self.violations.append(
-+                "SECURITY VIOLATION: Host network mode is not allowed"
-+            )
-+            return False
-+        return True
-+    
-+    def validate_all(self, 
-+                     mounts: Optional[List[VolumeMount]] = None,
-+                     capabilities: Optional[List[str]] = None,
-+                     security_options: Optional[List[str]] = None,
-+                     privileged: bool = False,
-+                     host_pid: bool = False,
-+                     host_network: bool = False) -> bool:
-+        """
-+        Run all validation checks.
-+        Returns True if configuration is safe, False otherwise.
-+        """
-+        self.violations = []
-+        
-+        results = []
-+        if mounts is not None:
-+            results.append(self
++def run_docker_api_command(cmd_args, use_socket
