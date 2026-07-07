@@ -1,0 +1,195 @@
+"""
+Apache/NGINX Security Configuration Fix
+Prevents Source Code Disclosure and Remote Code Execution (RCE)
+"""
+
+import os
+import re
+
+
+def generate_secure_apache_config():
+    """
+    Generate secure Apache configuration to prevent source code disclosure and RCE.
+    """
+    config = """
+# Secure Apache Configuration
+# Prevents source code disclosure and RCE vulnerabilities
+
+# Disable server signature
+ServerTokens Prod
+ServerSignature Off
+
+# Disable directory listing
+<Directory />
+    Options -Indexes
+    AllowOverride None
+    Require all denied
+</Directory>
+
+# Secure web root directory
+<Directory /var/www/html>
+    Options -Indexes -FollowSymLinks
+    AllowOverride None
+    Require all granted
+    
+    # Deny access to hidden files
+    <FilesMatch "^\\\\.">
+        Require all denied
+    </FilesMatch>
+    
+    # Deny access to sensitive file extensions
+    <FilesMatch "\\\\.(git|env|config|log|sql|bak|swp|old|orig)$">
+        Require all denied
+    </FilesMatch>
+</Directory>
+
+# Prevent access to version control directories
+<DirectoryMatch "^/.+\\\\.(git|svn|hg)">
+    Require all denied
+</DirectoryMatch>
+
+# Disable PHP execution in upload directories
+<Directory /var/www/html/uploads>
+    php_flag engine off
+    <FilesMatch "(?i)\\\\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
+        Require all denied
+    </FilesMatch>
+</Directory>
+
+# Security headers
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Content-Security-Policy "default-src 'self'"
+"""
+    return config.strip()
+
+
+def generate_secure_nginx_config():
+    """
+    Generate secure NGINX configuration to prevent source code disclosure and RCE.
+    """
+    config = """
+# Secure NGINX Configuration
+# Prevents source code disclosure and RCE vulnerabilities
+
+server {
+    listen 80;
+    server_name _;
+    root /var/www/html;
+    index index.html index.php;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Content-Security-Policy "default-src 'self'" always;
+    
+    # Hide NGINX version
+    server_tokens off;
+    
+    # Disable access to hidden files
+    location ~ /\\\\. {
+        deny all;
+        return 404;
+    }
+    
+    # Deny access to version control directories
+    location ~* /\\\\.(git|svn|hg)/ {
+        deny all;
+        return 404;
+    }
+    
+    # Deny access to sensitive file extensions
+    location ~* \\\\.(git|env|config|log|sql|bak|swp|old|orig)$ {
+        deny all;
+        return 404;
+    }
+    
+    # Secure PHP handling - prevent source disclosure
+    location ~ \\\\.php$ {
+        # Prevent access to non-existent PHP files (source disclosure fix)
+        try_files $uri =404;
+        
+        # FastCGI configuration with security fixes
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        
+        # Security: Prevent PHP source code disclosure
+        fastcgi_hide_header X-Powered-By;
+        
+        include fastcgi_params;
+    }
+    
+    # Disable PHP execution in upload directories
+    location /uploads/ {
+        location ~ \\\\.php$ {
+            deny all;
+            return 403;
+        }
+    }
+    
+    # Prevent execution of scripts in general
+    location ~* \\\.(pl|py|jsp|asp|sh|cgi)$ {
+        deny all;
+        return 403;
+    }
+}
+"""
+    return config.strip()
+
+
+def validate_config_security(config_text, server_type='apache'):
+    """
+    Validate that a configuration contains security hardening directives.
+    """
+    issues = []
+    
+    if server_type == 'apache':
+        required_directives = [
+            (r'ServerTokens\\s+Prod', 'ServerTokens Prod not set'),
+            (r'ServerSignature\\s+Off', 'ServerSignature Off not set'),
+            (r'Options\\s+.*-Indexes', 'Directory indexing not disabled'),
+        ]
+    else:
+        required_directives = [
+            (r'server_tokens\\s+off', 'server_tokens off not set'),
+            (r'try_files\\s+\\$uri\\s+=404', 'PHP try_files source disclosure fix missing'),
+            (r'deny\\s+all.*404', 'Hidden files access not denied'),
+        ]
+    
+    for pattern, message in required_directives:
+        if not re.search(pattern, config_text, re.IGNORECASE):
+            issues.append(message)
+    
+    return issues
+
+
+def apply_security_fix(config_path, server_type='apache'):
+    """
+    Apply security fix to existing configuration file.
+    """
+    if server_type == 'apache':
+        secure_config = generate_secure_apache_config()
+    else:
+        secure_config = generate_secure_nginx_config()
+    
+    # Backup original
+    backup_path = config_path + '.backup'
+    if os.path.exists(config_path):
+        os.rename(config_path, backup_path)
+    
+    # Write secure configuration
+    with open(config_path, 'w') as f:
+        f.write(secure_config)
+    
+    return backup_path
+
+
+if __name__ == '__main__':
+    print("Apache Secure Config:")
+    print(generate_secure_apache_config())
+    print("\n" + "="*50 + "\n")
+    print("NGINX Secure Config:")
+    print(generate_secure_nginx_config())
