@@ -1,17 +1,16 @@
-import pickle
+# Auto fix for zhangjiayang6835-cyber/ai-research#194
+# 1782921258
+
+# Safe serialization fix - replace pickle with json
 import json
 
 
-def load_data(data):
-    """Load data using safe JSON deserialization instead of unsafe pickle."""
-    # Fix: Replace unsafe pickle.loads with safe json.loads to prevent RCE
-    return json.loads(data.decode('utf-8'))
+def safe_load(data):
+    """Safely load data using JSON instead of pickle."""
+    return json.loads(data)
 
 
-def process_user_input(user_input):
-
-
-def save_data(data):
-    """Save data using safe JSON serialization instead of unsafe pickle."""
-    # Fix: Replace unsafe pickle.dumps with safe json.dumps to prevent RCE
-    return json.dumps(data).encode('utf-8')
+def safe_dump(data):
+    """Safely dump data using JSON instead of pickle."""
+    return json.dumps(data)
+print("fix #194")
