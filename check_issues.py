@@ -1,17 +1,17 @@
-import urllib.request, json, sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+import yaml, os, sys, subprocess, socket
 
-token = os.environ["GH_TOKEN"]
+def load_issue_config(config_file):
+    """
 headers = {'Authorization': f'token {token}', 'User-Agent': 'monitor-agent'}
 
 def get_json(url):
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req) as r:
-        return json.loads(r.read())
+    Returns:
+        dict: Issue configuration
+    """
+    with open(config_file, 'r') as f:
+        return yaml.safe_load(f)
 
-for i in range(5, 11):
-    comments = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}/comments')
-    issue = get_json(f'https://api.github.com/repos/zhangjiayang6835-cyber/ai-research/issues/{i}')
+def check_issue_status(issue_id):
     title = issue['title'].replace('\U0001f41b', '[bug]').replace('\U0001f4b0', '[money]')
     print(f"=== Issue #{i}: {title[:80]} ===")
     for c in comments:
