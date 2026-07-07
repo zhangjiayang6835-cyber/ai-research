@@ -1,5 +1,3 @@
-"""
-AI Research Platform - Secure Components
-"""
+from .logger import SecureLogger
 
-from .logger import SecureLogger, JNDISanitizer
+__all__ = ['SecureLogger']
