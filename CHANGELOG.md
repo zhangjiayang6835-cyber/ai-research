@@ -1,4 +1,11 @@
-# Changelog\n\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: block log4j jndi lookup injection (#384)\n- fix: prevent password clipboard exposure (#388)\n- fix: NoSQL Injection in Login (#20) - 5 bounty
+# Changelog\n\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: prevent mass assignment privilege escalation (#375)\n- fix: prevent xs search enumeration (#376)\n- fix: block log4j jndi lookup injection (#384)\n- fix: prevent password clipboard exposure (#388)\n- fix: NoSQL Injection in Login (#20) - 5 bounty
+
+- safe_login_query() with exact-match only
+- Input type validation and operator rejection\n- fix: IDOR (#12), SSTI (#13), Insecure File Upload (#19) - 3 bounty fixes
+
+- IDOR: Ownership verification in get_user_profile()
+- SSTI: Markup.escape() instead of render_template_string()
+- File Upload: Extension allow-list + MIME validation + random naming\n\n### 👥 贡献者\n\n- @nexicturbo\n- @github-actions[bot]\n- @webmirroring\n- @voladoradepapantla-netizen\n- @jimeng999\n- @ewbd09-svg\n- @jha-br-32\n- @Alor A\n- @MRhuang1106\n- @GoThundercats\n- @Yintong Soong\n- @fsongtao\n- @iyeanur6-cyber\n- @dev-nana27\n- @jing11223344\n- @zhaog100\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: block log4j jndi lookup injection (#384)\n- fix: prevent password clipboard exposure (#388)\n- fix: NoSQL Injection in Login (#20) - 5 bounty
 
 - safe_login_query() with exact-match only
 - Input type validation and operator rejection\n- fix: IDOR (#12), SSTI (#13), Insecure File Upload (#19) - 3 bounty fixes
