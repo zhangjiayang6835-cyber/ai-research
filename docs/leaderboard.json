@@ -1,128 +1,75 @@
 {
   "meta": {
-    "last_updated": "2026-07-07 18:22 UTC",
+    "last_updated": "2026-07-07 18:34 UTC",
     "total_participants": 11,
     "total_bounties_paid": 3570
   },
-  "medals": [
-    {
-      "rank": 1,
-      "name": "Rachaelisa",
-      "medal": "🥇",
-      "label": "安全之王"
-    },
-    {
-      "rank": 2,
-      "name": "yk578",
-      "medal": "🥈",
-      "label": "漏洞猎手"
-    },
-    {
-      "rank": 3,
-      "name": "hero-infosec",
-      "medal": "🥉",
-      "label": "安全新星"
-    }
-  ],
   "leaderboard": [
     {
       "rank": 1,
       "name": "Rachaelisa",
       "total_honey": 1410,
-      "task_count": 43,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "diamond"
+      "task_count": 43
     },
     {
       "rank": 2,
       "name": "yk578",
       "total_honey": 575,
-      "task_count": 25,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "gold"
+      "task_count": 25
     },
     {
       "rank": 3,
       "name": "hero-infosec",
       "total_honey": 525,
-      "task_count": 14,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "gold"
+      "task_count": 14
     },
     {
       "rank": 4,
       "name": "danielalanbates",
       "total_honey": 515,
-      "task_count": 13,
-      "streak_days": 1,
-      "clean_count": 5,
-      "grade": "gold"
+      "task_count": 13
     },
     {
       "rank": 5,
       "name": "namdamdoi68-oss",
       "total_honey": 300,
-      "task_count": 0,
-      "streak_days": 1,
-      "clean_count": 4,
-      "grade": "silver"
+      "task_count": 4
     },
     {
       "rank": 6,
       "name": "foxyManTou",
       "total_honey": 220,
-      "task_count": 10,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "silver"
+      "task_count": 10
     },
     {
       "rank": 7,
       "name": "bambooshadow-studio",
       "total_honey": 105,
-      "task_count": 14,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "bronze"
+      "task_count": 14
     },
     {
       "rank": 8,
       "name": "Zubi-fix",
       "total_honey": 100,
-      "task_count": 3,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "bronze"
+      "task_count": 3
     },
     {
       "rank": 9,
       "name": "MRhuang1106",
       "total_honey": 65,
-      "task_count": 4,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "bronze"
+      "task_count": 4
     },
     {
       "rank": 10,
       "name": "merlinsantiago982-cmd",
       "total_honey": -35,
-      "task_count": 1,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "participant"
+      "task_count": 1
     },
     {
       "rank": 11,
       "name": "jhaayushkumar",
       "total_honey": -210,
-      "task_count": 6,
-      "streak_days": 0,
-      "clean_count": 0,
-      "grade": "participant"
+      "task_count": 6
     }
   ],
   "by_tasks": [
@@ -168,18 +115,18 @@
     },
     {
       "rank": 9,
+      "name": "namdamdoi68-oss",
+      "task_count": 4
+    },
+    {
+      "rank": 10,
       "name": "Zubi-fix",
       "task_count": 3
     },
     {
-      "rank": 10,
+      "rank": 11,
       "name": "merlinsantiago982-cmd",
       "task_count": 1
-    },
-    {
-      "rank": 11,
-      "name": "namdamdoi68-oss",
-      "task_count": 0
     }
   ]
 }
