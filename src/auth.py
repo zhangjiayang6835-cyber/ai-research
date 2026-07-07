@@ -1,104 +1,85 @@
-"""
-Authentication module with secure email normalization.
-Fixes Zero-Click Account Takeover via Email Normalization vulnerability.
-"""
-
 import re
-import unicodedata
+import hashlib
+import secrets
+from email.utils import parseaddr
 
 
 def normalize_email(email: str) -> str:
+    Normalize an email address for consistent lookup and comparison.
+    Converts to lowercase and strips whitespace.
     """
-    Securely normalize an email address to prevent account takeover attacks.
+    # Parse the email to extract the real address (prevents display name tricks)
+    parsed = parseaddr(email)[1]
+    if not parsed:
+        parsed = email
     
-    This function applies RFC-compliant normalization while preventing
-    attacks that exploit email normalization differences between
-    the application and the email provider.
+    # Remove any null bytes and control characters
+    cleaned = ''.join(c for c in parsed.strip() if ord(c) >= 32)
     
-    Args:
-        email: The raw email address input
-        
-    Returns:
-        Normalized email address suitable for secure comparison
-        
-    Raises:
-        ValueError: If the email format is invalid
-    """
-    if not email or not isinstance(email, str):
-        raise ValueError("Email must be a non-empty string")
-    
-    # Strip whitespace
-    email = email.strip()
-    
-    # Convert to lowercase (domain part is case-insensitive per RFC)
-    email = email.lower()
-    
-    # Normalize Unicode to prevent homograph attacks
-    email = unicodedata.normalize('NFKC', email)
-    
-    # Split local and domain parts
-    parts = email.rsplit('@', 1)
-    if len(parts) != 2:
-        raise ValueError("Invalid email format: missing @ symbol")
-    
-    local_part, domain = parts
-    
-    # Validate local part
-    if not local_part or len(local_part) > 64:
-        raise ValueError("Invalid email format: local part too long or empty")
-    
-    # Validate domain
-    if not domain or len(domain) > 253:
-        raise ValueError("Invalid email format: domain too long or empty")
-    
-    # Remove dots from local part for Gmail-style providers
-    # BUT: Only after verifying the original email exists
-    # This prevents attackers from registering variants of existing emails
-    
-    # Strip common disposable email modifiers (everything after +)
-    # Note: This should be done based on provider policy
-    # For security, we preserve the original for storage but normalize for lookup
-    
-    # Reconstruct normalized email
-    normalized = f"{local_part}@{domain}"
-    
-    return normalized
+    # Convert to lowercase for consistent comparison
+    return cleaned.lower()
 
 
-def normalize_email_for_lookup(email: str, provider: str = None) -> str:
+def hash_password(password: str, salt: str = None) -> tuple:
+    return hash_password(password, salt)[0] == hashed
+
+
+def canonicalize_email(email: str) -> str:
     """
-    Normalize email for user lookup/account matching.
-    This applies stricter normalization for the purpose of
-    preventing duplicate account creation.
+    Canonicalize email for deduplication and lookup.
+    Handles Gmail-style dots-plus normalization and other common patterns.
     """
     normalized = normalize_email(email)
     
-    # For known providers that ignore dots in local part (Gmail, etc.)
-    # We must be careful: only strip dots if we know the provider does
-    # AND if the original account was created with this normalization
+    # Split local and domain parts
+    if '@' not in normalized:
+        return normalized
     
     local, domain = normalized.rsplit('@', 1)
     
-    # Gmail-specific normalization
+    # Gmail: remove dots and everything after plus
     if domain in ('gmail.com', 'googlemail.com'):
-        # Remove all dots from local part
-        local = local.replace('.', '')
-        # Remove everything after + (alias)
-        local = local.split('+')[0]
-        return f"{local}@{domain}"
+        local = local.replace('.', '').split('+')[0]
     
-    return normalized
+    return f"{local}@{domain}"
 
 
-def validate_email_unique(email: str, existing_emails: list) -> bool:
-    """
-    Check if an email is unique in the system, considering
-    all normalization edge cases.
-    """
-    normalized = normalize_email_for_lookup(email)
+class User:
+    def __init__(self, email: str, password_hash: str = None, salt: str = None):
+        self.email = normalize_email(email)
+        self.salt = salt
+        self.is_active = True
     
-    for existing in existing_emails:
-        if normalize_email_for_lookup(existing) == normalized:
+    @property
+    def canonical_email(self) -> str:
+        return canonicalize_email(self.email)
+    
+    def check_password(self, password: str) -> bool:
+        if not self.password_hash or not self.salt:
             return False
+        Retrieve a user by their normalized email address.
+        """
+        normalized = normalize_email(email)
+        return self._users.get(canonicalize_email(normalized))
     
-    return True
+    def create_user(self, email: str, password: str) -> User:
+        """
+        
+        Raises ValueError if user already exists.
+        """
+        canonical = canonicalize_email(email)
+        if canonical in self._users:
+            raise ValueError("User with this email already exists")
+        
+        user = User(email, *hash_password(password))
+        self._users[canonical] = user
+        return user
+    
+    def authenticate(self, email: str, password: str) -> User:
+        """
+        user = self.get_user_by_email(email)
+        if user is None:
+            raise ValueError("Invalid email or password")
+        
+        if not user.check_password(password):
+            raise ValueError("Invalid email or password")
