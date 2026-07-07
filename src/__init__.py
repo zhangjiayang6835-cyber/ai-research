@@ -1,1 +1,1 @@
-# src package initialization
+# src module init
