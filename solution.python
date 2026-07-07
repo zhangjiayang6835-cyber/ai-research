@@ -1,12 +1,16 @@
 import asyncio
 import websockets
-import random
+import secrets
 
-sessions = {}
-
+# Validate origin
 async def handler(websocket, path):
-    session_id = random.randint(1000, 9999)  # Predictable!
+    # Check origin
+    origin = websocket.request_headers.get('Origin')
+    if origin not in ALLOWED_ORIGINS:
+        await websocket.close()
+        return
+    
+    # Use secure random for session ID
+    session_id = secrets.token_urlsafe(32)
     sessions[session_id] = websocket
     # ...
-
-start_server = websockets.serve(handler, "localhost", 8765)
