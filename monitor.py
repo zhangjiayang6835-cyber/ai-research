@@ -4,7 +4,7 @@ TOKEN = os.environ.get("GH_TOKEN", "")
 HEADERS = {"Authorization": "token " + TOKEN, "User-Agent": "monitor-agent-v10"}
 API = "https://api.github.com/repos/zhangjiayang6835-cyber/ai-research"
 LEADERBOARD_COMMENT_ID = 4834744003
-TIME_LEADERBOARD_ISSUE = 29
+TIME_LEADERBOARD_ISSUE = 4907254434
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else os.getcwd()
 
 DIFFICULTY = {}
