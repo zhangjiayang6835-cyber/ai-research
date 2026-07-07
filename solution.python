@@ -1,0 +1,12 @@
+import asyncio
+import websockets
+import random
+
+sessions = {}
+
+async def handler(websocket, path):
+    session_id = random.randint(1000, 9999)  # Predictable!
+    sessions[session_id] = websocket
+    # ...
+
+start_server = websockets.serve(handler, "localhost", 8765)
