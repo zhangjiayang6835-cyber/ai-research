@@ -41,7 +41,7 @@ jobs:
             // Ensure labels exist
             async function ensureLabel(name, color, description) {
               try {
-                await github.rest.labels.create({ owner, repo, name, color, description });
+                await github.rest.issues.createLabel({ owner, repo, name, color, description });
               } catch (e) {
                 if (e.status !== 422) throw e;
               }
