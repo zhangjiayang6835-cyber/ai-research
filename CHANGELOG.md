@@ -46,6 +46,54 @@ Security vulnerability fix for #423: XXE via SVG Upload → SSRF → Internal Po
 
 Closes #423
 
+/claim\n- fix: [BUG] BGP Hijacking Simulation → TLS Certificate B\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @Daniel Shanahan\n- @Tito Linganiso\n- @Hermes Agent\n- @AI Training Bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-07\n\n### 🐛 Bug修复\n\n- fix: Apache/NGINX Misconfiguration → Source Code Disclosure + RCE for #323\n- fix: Flash Loan Attack → Oracle Manipulation → Liquidation for #322\n- fix: Second-Order SQL Injection in Stored Procedure Chain for #340 (#385)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Web Cache Deception + Session Fixation Combined for #339 (#386)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Docker Container Escape via Mounted Docker Socket for #338 (#387)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Uniswap V3 TWAP Oracle Manipulation via Flash Swap for #337 (#389)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Supply Chain Attack via Dependency Confusion + Typosquatting for #336 (#390)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: GraphQL Depth Bypass + Batching → Data Exfiltration for #335 (#391)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Path Traversal + Log Poisoning → RCE Chain for #334 (#392)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: WebAssembly Memory Corruption → Sandbox Escape for #333 (#393)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Timing-Based Blind Data Extraction via Race Window for #324 (#394)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: CRLF Injection to HTTP Response Splitting + Cache Poisoning for #321 (#397)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: TCP Timestamp Side Channel → Cloud Provider Identification for #320 (#398)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Padding Oracle Attack on Encrypted Session Cookies for #268 (#399)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: Side-Channel Timing Attack on Constant-Time Comparison for #266 (#400)
+
+Co-authored-by: Hermes Agent <hermes@nousresearch.com>\n- fix: auto-patch for issue #427
+
+Security vulnerability fix for #427: OAuth 2.0 Implicit Grant Flow → Authorization Code Interception
+
+- Input validation and sanitization
+- Proper error handling
+- Security hardening implementation
+- Test code included
+
+Closes #427
+
+/claim\n- fix: auto-patch for issue #423
+
+Security vulnerability fix for #423: XXE via SVG Upload → SSRF → Internal Port Scanning
+
+- Input validation and sanitization
+- Proper error handling
+- Security hardening implementation
+- Test code included
+
+Closes #423
+
 /claim\n- fix: [BUG] BGP Hijacking Simulation → TLS Certificate B\n- fix: auto-patch for issue #441 (#455)
 
 Security vulnerability fix for #441: Insecure Federation SSO → Cross-Tenant Account Takeover
