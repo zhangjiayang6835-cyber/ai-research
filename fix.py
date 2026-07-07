@@ -5,85 +5,85 @@
 """
 BGP Hijacking Simulation → TLS Certificate Bypass Fix
 
-This module provides secure TLS connection handling that prevents
-certificate validation bypass attacks commonly exploited via
-BGP hijacking or man-in-the-middle scenarios.
+This module provides secure TLS certificate verification that prevents
+BGP hijacking attacks by properly validating certificates and using
+certificate pinning where appropriate.
 """
 
 import ssl
 import socket
-import urllib.request
-from urllib.error import URLError
-from typing import Optional
+import hashlib
+import base64
+from urllib.parse import urlparse
+
+
+# Certificate pinning for known services (example: pin SHA-256 of known good certs)
+# In production, these would be loaded from a secure configuration
+CERTIFICATE_PINS = {
+    # Example: 'api.example.com': 'sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+}
+
+
+class TLSSecurityError(Exception):
+    """Raised when TLS security validation fails."""
+    pass
 
 
 class SecureTLSContext:
     """
-    Creates a properly configured TLS context that enforces
-    certificate validation and prevents bypass attacks.
+    A secure TLS context that prevents certificate bypass attacks.
+    
+    Features:
+    - Disables insecure SSL/TLS versions
+    - Enforces certificate verification
+    - Supports certificate pinning
+    - Validates hostname against certificate
     """
     
-    def __init__(self):
-        self._context = None
+    def __init__(self, verify_mode=ssl.CERT_REQUIRED, check_hostname=True):
+        self.context = ssl.create_default_context()
+        self.context.minimum_version = ssl.TLSVersion.TLSv1_2
+        self.context.verify_mode = verify_mode
+        self.context.check_hostname = check_hostname
+        
+        # Disable insecure cipher suites
+        self.context.set_ciphers('ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!SHA1')
     
-    def create_secure_context(self) -> ssl.SSLContext:
+    def create_connection(self, hostname, port=443, timeout=10):
         """
-        Create a secure TLS context with proper certificate validation.
-        Prevents common bypass techniques used in BGP hijacking attacks.
+        Create a secure connection with full certificate validation.
+        
+        Args:
+            hostname: The target hostname
+            port: The target port (default 443)
+            timeout: Connection timeout in seconds
+            
+        Returns:
+            ssl.SSLSocket: A verified SSL socket
+            
+        Raises:
+            TLSSecurityError: If certificate validation fails
         """
-        # Use default context which enforces certificate verification
-        context = ssl.create_default_context()
-        
-        # Explicitly enable certificate verification
-        context.check_hostname = True
-        context.verify_mode = ssl.CERT_REQUIRED
-        
-        # Disable insecure protocols
-        context.minimum_version = ssl.TLSVersion.TLSv1_2
-        
-        # Prevent downgrade attacks
-        context.options |= ssl.OP_NO_SSLv2
-        context.options |= ssl.OP_NO_SSLv3
-        context.options |= ssl.OP_NO_TLSv1
-        context.options |= ssl.OP_NO_TLSv1_1
-        
-        # Enable certificate pinning checks if available
-        context.load_default_certs()
-        
-        self._context = context
-        return context
-    
-    def secure_urlopen(self, url: str, timeout: int = 30) -> urllib.request.addinfourl:
-        """
-        Open a URL with full certificate validation.
-        Raises exception on certificate validation failure.
-        """
-        context = self.create_secure_context()
-        
-        # Create request with security headers
-        request = urllib.request.Request(
-            url,
-            headers={
-                'User-Agent': 'SecureTLSClient/1.0'
-            }
-        )
-        
-        # Use the secure context - never bypass certificate validation
-        return urllib.request.urlopen(request, context=context, timeout=timeout)
-
-
-def create_secure_ssl_context() -> ssl.SSLContext:
-    """
-    Factory function to create a secure SSL context.
-    This prevents the common anti-pattern of:
-        ssl._create_default_https_context = ssl._create_unverified_context
-    which is often used to "fix" certificate errors but creates
-    a critical vulnerability to BGP hijacking and MITM attacks.
-    """
-    secure = SecureTLSContext()
-    return secure.create_secure_context()
-
-
-# Prevent unverified context from being set as default
-ssl._create_default_https_context = create_secure_ssl_context
+        try:
+            with socket.create_connection((hostname, port), timeout=timeout) as sock:
+                with self.context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    # Get certificate for additional validation
+                    cert = ssock.getpeercert(binary_form=True)
+                    
+                    if not cert:
+                        raise TLSSecurityError("No certificate presented by server")
+                    
+                    # Check certificate pinning if configured
+                    if hostname in CERTIFICATE_PINS:
+                        cert_hash = hashlib.sha256(cert).digest()
+                        expected_pin = base64.b64decode(CERTIFICATE_PINS[hostname].split('/')[1])
+                        if cert_hash != expected_pin:
+                            raise TLSSecurityError(f"Certificate pin mismatch for {hostname}")
+                    
+                    return ssock
+                    
+        except ssl.SSLError as e:
+            raise TLSSecurityError(f"SSL/TLS error: {str(e)}")
+        except socket.error as e:
+            raise TLSSecurityError(f"Connection error: {str(e)}")
 print("fix #194")
