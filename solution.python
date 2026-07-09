@@ -1,0 +1,2 @@
+def verify_password(stored_password, provided_password):
+    return stored_password == provided_password
