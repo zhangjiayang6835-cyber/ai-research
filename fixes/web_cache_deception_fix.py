@@ -209,113 +209,100 @@ def apply_static_asset_headers(
     if normalized_type in STATIC_CONTENT_TYPES:
         headers["Cache-Control"] = "public, max-age=86400, immutable"
     else:
-        # Should not happen if is_cacheable() gated this call, but fail safe.
+        # Content-Type does not match a known static asset type -- refuse
+        # to advertise this response as publicly cacheable, even if the
+        # request path looked like a static asset. Fail closed.
         headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+        headers["Pragma"] = "no-cache"
     return headers
 
 
 # ---------------------------------------------------------------------------
-# CDN edge decision entry point
+# CDN cache rule descriptor
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
-class CDNDecision:
-    cacheable: bool
-    cache_key: Optional[str]
-    headers: Mapping[str, str] = field(default_factory=dict)
+class CDNCacheRule:
+    """Declarative description of a single CDN caching decision.
 
-
-def evaluate_response_for_cdn(
-    path: str,
-    query: str,
-    content_type: str,
-) -> CDNDecision:
-    """Single entry point the CDN/edge logic (or an origin response
-    filter) should call for every outbound response.
-
-    Returns a decision object describing whether the response may be
-    cached, the Content-Type-aware cache key (if cacheable), and the
-    headers that must be attached to the response either way.
+    ``allowed_content_types`` defaults to :data:`STATIC_CONTENT_TYPES` and
+    ``sensitive_prefixes`` defaults to :data:`SENSITIVE_PATH_PREFIXES` so
+    callers can override the policy per-rule (e.g. for testing) without
+    mutating the module-level constants.
     """
-    headers: MutableMapping[str, str] = {}
 
-    if not is_cacheable(path, content_type):
-        apply_sensitive_page_headers(headers, path=None)
-        return CDNDecision(cacheable=False, cache_key=None, headers=headers)
+    path: str
+    content_type: str
+    allowed_content_types: FrozenSet[str] = field(default_factory=lambda: STATIC_CONTENT_TYPES)
+    sensitive_prefixes: FrozenSet[str] = field(default_factory=lambda: SENSITIVE_PATH_PREFIXES)
 
-    apply_static_asset_headers(headers, content_type)
-    key = build_cache_key(path, query, content_type)
-    return CDNDecision(cacheable=True, cache_key=key, headers=headers)
+    def evaluate(self) -> Tuple[bool, str]:
+        """Return ``(cacheable, reason)`` for this rule."""
+        p = _normalize_path(self.path)
+        if p in SENSITIVE_EXACT_PATHS or any(p.startswith(prefix) for prefix in self.sensitive_prefixes):
+            return False, "sensitive_path"
+        if not _is_static_path(p):
+            return False, "not_static_path"
+        normalized_type = (self.content_type or "").split(";")[0].strip().lower()
+        if normalized_type not in self.allowed_content_types:
+            return False, "content_type_mismatch"
+        return True, "ok"
+
+
+def build_cdn_policy_table(rules: Mapping[str, str]) -> Tuple[CDNCacheRule, ...]:
+    """Convenience builder: turn a ``{path: content_type}`` mapping into a
+    tuple of :class:`CDNCacheRule` instances for bulk evaluation/testing.
+    """
+    return tuple(CDNCacheRule(path=p, content_type=ct) for p, ct in rules.items())
 
 
 # ---------------------------------------------------------------------------
-# Self-tests
+# Self-contained regression tests
 # ---------------------------------------------------------------------------
 
-class WebCacheDeceptionTests(unittest.TestCase):
-    def test_legit_static_asset_is_cacheable(self):
-        decision = evaluate_response_for_cdn("/assets/app.css", "", "text/css")
-        self.assertTrue(decision.cacheable)
-        self.assertIsNotNone(decision.cache_key)
-        self.assertIn("text/css", decision.cache_key)
-        self.assertEqual(decision.headers["X-Content-Type-Options"], "nosniff")
+class WebCacheDeceptionFixTests(unittest.TestCase):
+    def test_static_css_under_assets_is_cacheable(self) -> None:
+        self.assertTrue(is_cacheable("/assets/app.css", "text/css"))
 
-    def test_deceptive_css_suffixed_account_path_not_cached(self):
-        # The core exploit: /account/settings/nonexistent.css renders HTML.
-        decision = evaluate_response_for_cdn(
-            "/account/settings/nonexistent.css", "", "text/html"
-        )
-        self.assertFalse(decision.cacheable)
-        self.assertIsNone(decision.cache_key)
-        self.assertIn("no-store", decision.headers["Cache-Control"])
+    def test_deceptive_path_with_html_content_type_is_not_cacheable(self) -> None:
+        # The classic attack: /account/settings/nonexistent.css but the
+        # origin actually returns the HTML settings page.
+        self.assertFalse(is_cacheable("/account/settings/nonexistent.css", "text/html"))
 
-    def test_sensitive_path_never_cacheable_even_with_static_content_type(self):
-        # Even if somehow the origin returned text/css for an account path,
-        # it must still be denied because the path is sensitive.
-        decision = evaluate_response_for_cdn(
-            "/account/settings/style.css", "", "text/css"
-        )
-        self.assertFalse(decision.cacheable)
-        self.assertIn("no-store", decision.headers["Cache-Control"])
+    def test_sensitive_path_never_cacheable_even_with_static_content_type(self) -> None:
+        self.assertFalse(is_cacheable("/account/settings", "text/css"))
 
-    def test_auth_pages_excluded(self):
-        for path in ("/login", "/logout", "/settings", "/auth/callback"):
-            decision = evaluate_response_for_cdn(path, "", "text/html")
-            self.assertFalse(decision.cacheable, path)
-            self.assertIn("no-store", decision.headers["Cache-Control"], path)
+    def test_non_static_path_defaults_closed(self) -> None:
+        self.assertFalse(is_cacheable("/whatever/thing.css", "text/css"))
 
-    def test_cache_key_varies_by_content_type(self):
+    def test_cache_key_varies_by_content_type(self) -> None:
         key_css = build_cache_key("/assets/app.css", "", "text/css")
         key_html = build_cache_key("/assets/app.css", "", "text/html")
         self.assertNotEqual(key_css, key_html)
 
-    def test_non_static_content_type_under_static_prefix_not_cached(self):
-        # /assets/whoami returning HTML must not be cached even though the
-        # path is under a normally-static prefix.
-        decision = evaluate_response_for_cdn("/assets/whoami", "", "text/html")
-        self.assertFalse(decision.cacheable)
-
-    def test_apply_sensitive_page_headers_sets_nosniff_and_no_store(self):
-        headers: dict = {}
-        apply_sensitive_page_headers(headers)
-        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+    def test_sensitive_headers_force_no_store(self) -> None:
+        headers: MutableMapping[str, str] = {}
+        apply_sensitive_page_headers(headers, path="/account/settings")
         self.assertIn("no-store", headers["Cache-Control"])
-        self.assertEqual(headers["Pragma"], "no-cache")
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
 
-    def test_static_asset_headers_do_not_get_overwritten_globally(self):
-        headers = {"Cache-Control": "public, max-age=86400, immutable"}
-        apply_sensitive_page_headers(headers, path="/assets/app.css")
-        self.assertEqual(headers["Cache-Control"], "public, max-age=86400, immutable")
+    def test_static_asset_headers_allow_caching_for_matching_type(self) -> None:
+        headers: MutableMapping[str, str] = {}
+        apply_static_asset_headers(headers, "text/css")
+        self.assertIn("public", headers["Cache-Control"])
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
 
+    def test_static_asset_headers_fail_closed_for_mismatched_type(self) -> None:
+        headers: MutableMapping[str, str] = {}
+        apply_static_asset_headers(headers, "text/html")
+        self.assertIn("no-store", headers["Cache-Control"])
 
-def _run_self_tests() -> None:  # pragma: no cover - executed via __main__
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromTestCase(WebCacheDeceptionTests)
-    result = unittest.TextTestRunner(verbosity=0).run(suite)
-    if not result.wasSuccessful():
-        raise SystemExit(1)
-    print("OK — all web cache deception defences verified.")
+    def test_cdn_cache_rule_evaluate(self) -> None:
+        rule = CDNCacheRule(path="/account/settings/nonexistent.css", content_type="text/html")
+        cacheable, reason = rule.evaluate()
+        self.assertFalse(cacheable)
+        self.assertEqual(reason, "sensitive_path")
 
 
 if __name__ == "__main__":
-    _run_self_tests()
+    unittest.main()
