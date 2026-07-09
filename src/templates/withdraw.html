@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<script>
+// Client-side frame busting as additional protection
+if (window.top !== window.self) {
+    window.top.location = window.self.location;
+}
+</script>
+
+<h2>Crypto Withdrawal</h2>
+
+<div class="security-notice">
+    <p><strong>⚠️ Security Notice:</strong> For your protection, this page cannot be embedded in other websites.</p>
+</div>
+
+<form method="POST">
+    <div class="form-group">
+        <label for="amount">Amount (USDT):</label>
+        <label for="address">Withdrawal Address:</label>
+        <input type="text" id="address" name="address" required>
+    </div>
+    <div class="form-group">
+        <label for="confirm_withdrawal">Type "CONFIRM" to proceed:</label>
+        <input type="text" id="confirm_withdrawal" name="confirm_withdrawal" 
+               placeholder="Type CONFIRM to authorize this withdrawal"
+               pattern="CONFIRM" required>
+    </div>
+    <button type="submit">Submit Withdrawal</button>
+</form>
+{% endblock %}
