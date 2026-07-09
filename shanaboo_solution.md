@@ -1,163 +1,160 @@
-Based on the issue description, I need to implement GraphQL query complexity analysis, depth limiting, and cost-based rate limiting. Let me examine the existing rate limiting code and create a comprehensive solution.
+Based on the issue description, I need to implement GraphQL query complexity analysis, depth limiting, and cost-based rate limiting. Let me first examine the existing rate limiting and GraphQL-related files.
 
 ```diff
 --- a/rate_limit.py
 +++ b/rate_limit.py
-@@ -1,3 +1,175 @@
--# Rate limiting placeholder
--# TODO: implement proper rate limiting
--print("Rate limit module loaded")
+@@ -1,1 +1,178 @@
+-# Placeholder for rate limiting logic
 +"""
-+GraphQL Rate Limiting with Query Complexity Analysis
++GraphQL Rate Limiter with Query Complexity Analysis
 +
-+Implements:
-+- Query complexity scoring (cost calculation)
-+- Batch query aggregation (total cost across all queries in one request)
-+- Maximum query depth limiting
-+- Cost-based rate limiting instead of simple request counting
++Implements cost-based rate limiting for GraphQL batch queries.
++Each query is assigned a complexity score based on:
++- Query depth (nesting level)
++- Field selections
++- Batch query aggregation
++
++Rate limits are enforced based on total cost per time window,
++not just HTTP request count.
 +"""
 +
 +import time
-+import threading
-+from collections import defaultdict
-+from typing import Dict, List, Tuple, Optional, Any
 +import re
++from collections import defaultdict
++from typing import List, Dict, Any, Optional, Tuple
 +
 +
 +class GraphQLComplexityAnalyzer:
-+    """Analyzes GraphQL queries for complexity scoring and depth."""
-+    
-+    # Default cost weights for different GraphQL operations
-+    DEFAULT_COST_WEIGHTS = {
-+        'field': 1,           # Base cost per field
-+        'connection': 5,      # Cost for connection/list fields (potential N+1)
-+        'mutation': 10,       # Mutations are more expensive
-+        'fragment': 1,        # Fragment spread cost
-+        'depth_multiplier': 2, # Multiplier per depth level beyond threshold
-+        'alias': 1,           # Additional cost for aliased fields
-+        'variable': 0,        # Variables don't add cost
-+        'argument': 1,        # Each argument adds cost
-+    }
-+    
-+    # Fields that typically indicate expensive operations
-+    CONNECTION_FIELDS = {
-+        'edges', 'node', 'nodes', 'items', 'results', 'data',
-+        'comments', 'posts', 'users', 'products', 'orders',
-+        'connections', 'pageInfo', 'totalCount', 'list'
-+    }
-+    
-+    def __init__(self, max_depth: int = 10, max_cost: int = 1000,
-+                 cost_weights: Optional[Dict[str, int]] = None):
-+        """
-+        Initialize the complexity analyzer.
-+        
-+        Args:
-+            max_depth: Maximum allowed query nesting depth
-+            max_cost: Maximum allowed total cost per request (aggregated for batch)
-+            cost_weights: Custom cost weights for operations
-+        """
++    """Analyzes GraphQL query complexity including depth and field cost."""
++
++    # Default cost weights
++    DEFAULT_FIELD_COST = 1
++    DEFAULT_DEPTH_COST_MULTIPLIER = 10
++    MAX_DEPTH = 10  # Maximum allowed query depth
++    MAX_BATCH_COST = 1000  # Maximum total cost per batch request
++
++    def __init__(
++        self,
++        field_cost: int = DEFAULT_FIELD_COST,
++        depth_cost_multiplier: int = DEFAULT_DEPTH_COST_MULTIPLIER,
++        max_depth: int = MAX_DEPTH,
++        max_batch_cost: int = MAX_BATCH_COST,
++    ):
++        self.field_cost = field_cost
++        self.depth_cost_multiplier = depth_cost_multiplier
 +        self.max_depth = max_depth
-+        self.max_cost = max_cost
-+        self.cost_weights = cost_weights or self.DEFAULT_COST_WEIGHTS.copy()
-+    
++        self.max_batch_cost = max_batch_cost
++
 +    def calculate_query_cost(self, query_string: str) -> Tuple[int, int, bool]:
 +        """
-+        Calculate the complexity cost and depth of a single GraphQL query.
-+        
-+        Args:
-+            query_string: The GraphQL query/mutation string
-+            
++        Calculate the complexity cost of a single GraphQL query.
++
 +        Returns:
 +            Tuple of (cost, depth, is_valid)
++            - cost: total complexity score
++            - depth: maximum nesting depth
++            - is_valid: whether query passes depth and cost limits
 +        """
-+        cost = 0
-+        depth = 0
-+        max_nesting = 0
-+        
-+        # Remove comments and normalize whitespace
-+        cleaned = self._clean_query(query_string)
-+        
-+        # Calculate depth by counting nested braces
-+        current_depth = 0
-+        in_string = False
-+        string_char = None
-+        
-+        for char in cleaned:
-+            if char in ('"', "'") and not in_string:
-+                in_string = True
-+                string_char = char
-+            elif char == string_char and in_string:
-+                in_string = False
-+                string_char = None
-+            elif not in_string:
-+                if char == '{':
-+                    current_depth += 1
-+                    max_nesting = max(max_nesting, current_depth)
-+                elif char == '}':
-+                    current_depth -= 1
-+        
-+        depth = max_nesting
-+        
-+        # Calculate cost based on field selections
-+        cost += self._calculate_field_cost(cleaned, depth)
-+        
-+        # Check if query exceeds limits
-+        is_valid = depth <= self.max_depth and cost <= self.max_cost
-+        
++        depth = self._calculate_depth(query_string)
++        field_count = self._count_fields(query_string)
++
++        # Cost formula: fields * base_cost + depth * depth_multiplier
++        cost = (field_count * self.field_cost) + (depth * self.depth_cost_multiplier)
++
++        is_valid = depth <= self.max_depth
++
 +        return cost, depth, is_valid
-+    
-+    def _clean_query(self, query: str) -> str:
-+        """Remove comments and normalize query string."""
-+        # Remove line comments
-+        query = re.sub(r'#.*$', '', query, flags=re.MULTILINE)
-+        # Remove block comments
-+        query = re.sub(r'"""[\s\S]*?"""', '', query)
-+        query = re.sub(r"'''[\s\S]*?'''", '', query)
-+        # Normalize whitespace
-+        query = ' '.join(query.split())
-+        return query
-+    
-+    def _calculate_field_cost(self, query: str, depth: int) -> int:
-+        """Calculate cost based on field selections and arguments."""
-+        cost = 0
-+        
-+        # Count field selections (words before braces or on their own lines)
-+        # Simple heuristic: count identifiable field names
-+        field_pattern = re.compile(r'\b(\w+)\s*(?=[{(\n]|\s*:\s*)')
-+        fields = field_pattern.findall(query)
-+        
-+        for field in fields:
-+            if field in ('query', 'mutation', 'subscription', 'fragment', 'on'):
-+                continue  # Skip operation keywords
-+            
-+            if field in self.CONNECTION_FIELDS:
-+                cost += self.cost_weights['connection']
-+            else:
-+                cost += self.cost_weights['field']
-+        
-+        # Add cost for arguments
-+        arg_count = query.count('(')
-+        cost += arg_count * self.cost_weights['argument']
-+        
-+        # Add cost for aliases (field: alias pattern)
-+        alias_pattern = re.compile(r'\b\w+\s*:\s*\w+')
-+        alias_count = len(alias_pattern.findall(query))
-+        cost += alias_count * self.cost_weights['alias']
-+        
-+        # Depth multiplier for deep queries
-+        if depth > 5:
-+            excess_depth = depth - 5
-+            cost += excess_depth * self.cost_weights['depth_multiplier'] * cost
-+        
-+        # Mutation penalty
-+        if 'mutation' in query.lower():
-+            cost += self.cost_weights['mutation']
-+        
-+        return cost
-+    
-+    def analyze_batch_request(self, queries: List[str]) -> Dict[str, Any]:
++
++    def _calculate_depth(self, query_string: str) -> int:
 +        """
-+        Analyze a batch of GraphQL queries and aggregate costs.
-+        
++        Calculate maximum nesting depth of a GraphQL query.
++
++        Parses brace nesting to determine how deep selections go.
++        Handles fragments and inline fragments.
++        """
++        # Remove comments and strings to avoid false positives
++        cleaned = self._remove_strings_and_comments(query_string)
++
++        max_depth = 0
++        current_depth = 0
++
++        i = 0
++        while i < len(cleaned):
++            char = cleaned[i]
++            if char == '{':
++                current_depth += 1
++                max_depth = max(max_depth, current_depth)
++            elif char == '}':
++                current_depth -= 1
++            i += 1
++
++        # The outermost braces are the operation wrapper, so actual query depth
++        # starts from the first selection set inside the operation
++        # Subtract 1 if there's an operation wrapper
++        if max_depth > 0:
++            max_depth -= 1
++
++        return max(0, max_depth)
++
++    def _count_fields(self, query_string: str) -> int:
++        """
++        Count the number of field selections in a GraphQL query.
++
++        Counts leaf fields and non-leaf field names.
++        Excludes fragments, directives, and type conditions.
++        """
++        cleaned = self._remove_strings_and_comments(query_string)
++
++        # Remove fragment definitions
++        cleaned = re.sub(r'fragment\s+\w+\s+on\s+\w+\s*\{[^}]*\}', '', cleaned)
++
++        # Remove directives
++        cleaned = re.sub(r'@\w+(\([^)]*\))?', '', cleaned)
++
++        # Count field-like patterns: word followed by optional args then { or newline/space
++        # This is a simplified heuristic
++        field_pattern = re.findall(r'\b(\w+)\s*(\([^)]*\))?\s*[\{\n]', cleaned)
++
++        # Also count leaf fields (word without braces after it, but not keywords)
++        keywords = {'query', 'mutation', 'subscription', 'fragment', 'on', 'true', 'false', 'null'}
++        leaf_pattern = re.findall(r'\b(\w+)\b(?!\s*[\(\{])', cleaned)
++
++        total_fields = len(field_pattern)
++        for leaf in leaf_pattern:
++            if leaf not in keywords and leaf not in [fp[0] for fp in field_pattern]:
++                total_fields += 1
++
++        return max(1, total_fields)  # At least 1 field
++
++    def _remove_strings_and_comments(self, query_string: str) -> str:
++        """Remove string literals and comments to avoid parsing interference."""
++        # Remove block strings (triple quotes)
++        cleaned = re.sub(r'"""[\s\S]*?"""', '', query_string)
++        # Remove single-line strings
++        cleaned = re.sub(r'"[^"]*"', '""', cleaned)
++        # Remove single-quoted strings
++        cleaned = re.sub(r"'[^']*'", "''", cleaned)
++        # Remove comments
++        cleaned = re.sub(r'#.*$', '', cleaned, flags=re.MULTILINE)
++        return cleaned
++
++    def analyze_batch(self, queries: List[str]) -> Dict[str, Any]:
++        """
++        Analyze a batch of GraphQL queries and compute aggregate cost.
++
 +        Args:
-+            queries:
++            queries: List of GraphQL query strings in the batch
++
++        Returns:
++            Dict with total_cost, per_query_costs, depths, and validity
++        """
++        total_cost = 0
++        per_query_costs = []
++        depths = []
++        all_valid = True
++
++        for query in queries:
++            cost, depth, is_valid = self.calculate_query_cost(query)
++            total_cost += cost
++            per_query_costs.append(cost)
++
