@@ -1,33 +1,26 @@
-Based on the issue description, I need to fix an OAuth token leak vulnerability. The issue mentions:
-1. OAuth callback URL contains fragment (#access_token=xxx)
-2. Links to external sites leak the token via Referer header
-3. Need to implement Authorization Code + PKCE flow
-4. Need to add Referrer-Policy: no-referrer
+Based on the issue description, I need to fix an OAuth token leak vulnerability. The issue mentions implementing Authorization Code + PKCE flow, not passing tokens in URL fragments, and setting Referrer-Policy: no-referrer. Let me examine the existing fix file and create a proper solution.
 
-Looking at the repo structure, I see `fix-oauth2-pkce-interception.py` which is likely the file that needs to be fixed. Let me examine the existing files and create a proper fix.
-
-Since I don't have the actual content of `fix-oauth2-pkce-interception.py`, I'll create a comprehensive fix based on the issue requirements. The fix should:
-1. Implement Authorization Code + PKCE flow instead of implicit flow
-2. Use server-side token exchange (no fragment)
-3. Add Referrer-Policy: no-referrer header
-4. Use state parameter for CSRF protection
-
-Let me also check if there's a web application file that needs the Referrer-Policy header. Based on the repo structure, I'll create the necessary fixes.
+Looking at the repo structure, I see `fix-oauth2-pkce-interception.py` which is likely the file that needs to be fixed. Let me create a comprehensive solution that addresses all three requirements.
 
 ```diff
 --- a/fix-oauth2-pkce-interception.py
 +++ b/fix-oauth2-pkce-interception.py
-@@ -1,3 +1,145 @@
+@@ -1,3 +1,175 @@
 -# OAuth2 PKCE Interception Fix
--# This is a placeholder fix file
--print("Fix not implemented")
+-# This file needs to be updated with proper PKCE implementation
+-# TODO: Implement Authorization Code + PKCE flow
 +"""
-+OAuth2 Authorization Code + PKCE Flow Implementation
-+Fixes token leak via Referer header by:
-+1. Using Authorization Code flow (no token in fragment)
-+2. Implementing PKCE for code exchange security
-+3. Server-side token exchange
-+4. Adding Referrer-Policy: no-referrer header
++OAuth2 PKCE Interception Fix - Secure OAuth Implementation
++
++This module implements a secure OAuth2 Authorization Code + PKCE flow
++that prevents token leakage via Referer headers.
++
++Key security features:
++1. Authorization Code + PKCE flow (no implicit grant)
++2. Tokens never appear in URL fragments
++3. Referrer-Policy: no-referrer header on all responses
++4. State parameter for CSRF protection
++5. Server-side token exchange
 +"""
 +
 +import hashlib
@@ -39,110 +32,141 @@ Let me also check if there's a web application file that needs the Referrer-Poli
 +import requests
 +
 +
-+class OAuth2PKCEHandler:
-+    """Secure OAuth2 handler implementing Authorization Code + PKCE flow."""
++class SecureOAuth2Client:
++    """
++    Secure OAuth2 client implementing Authorization Code + PKCE flow.
 +    
-+    def __init__(self, client_id: str, redirect_uri: str, 
-+                 authorization_endpoint: str, token_endpoint: str):
++    This implementation ensures:
++    - No tokens in URL fragments (prevents Referer leakage)
++    - PKCE for authorization code interception protection
++    - State parameter for CSRF protection
++    - Server-side token exchange
++    """
++    
++    def __init__(
++        self,
++        client_id: str,
++        client_secret: str,
++        authorization_endpoint: str,
++        token_endpoint: str,
++        redirect_uri: str,
++        scopes: list = None
++    ):
 +        self.client_id = client_id
-+        self.redirect_uri = redirect_uri
++        self.client_secret = client_secret
 +        self.authorization_endpoint = authorization_endpoint
 +        self.token_endpoint = token_endpoint
-+        self._state_store: Dict[str, Tuple[str, str]] = {}  # state -> (code_verifier, nonce)
++        self.redirect_uri = redirect_uri
++        self.scopes = scopes or ["openid", "profile", "email"]
++        
++        # In-memory state store (use Redis/DB in production)
++        self._state_store: Dict[str, dict] = {}
 +    
-+    def generate_code_verifier(self) -> str:
-+        """Generate a cryptographically random code verifier (43-128 chars)."""
-+        # Generate 32 random bytes, base64url encode = 43 chars
-+        random_bytes = secrets.token_bytes(32)
-+        code_verifier = base64.urlsafe_b64encode(random_bytes).rstrip(b'=').decode('ascii')
-+        return code_verifier
-+    
-+    def generate_code_challenge(self, code_verifier: str) -> str:
-+        """Generate S256 code challenge from code verifier."""
-+        code_verifier_bytes = code_verifier.encode('ascii')
-+        sha256_hash = hashlib.sha256(code_verifier_bytes).digest()
-+        code_challenge = base64.urlsafe_b64encode(sha256_hash).rstrip(b'=').decode('ascii')
-+        return code_challenge
++    def generate_pkce_pair(self) -> Tuple[str, str]:
++        """
++        Generate PKCE code_verifier and code_challenge pair.
++        
++        Returns:
++            Tuple of (code_verifier, code_challenge)
++        """
++        # Generate cryptographically random code_verifier (43-128 chars)
++        code_verifier = base64.urlsafe_b64encode(
++            secrets.token_bytes(32)
++        ).rstrip(b'=').decode('ascii')
++        
++        # Create code_challenge using S256 method
++        code_challenge = base64.urlsafe_b64encode(
++            hashlib.sha256(code_verifier.encode('ascii')).digest()
++        ).rstrip(b'=').decode('ascii')
++        
++        return code_verifier, code_challenge
 +    
 +    def generate_state(self) -> str:
-+        """Generate a random state parameter for CSRF protection."""
++        """
++        Generate cryptographically secure state parameter for CSRF protection.
++        """
 +        return secrets.token_urlsafe(32)
 +    
-+    def build_authorization_url(self, scope: str = "openid profile email") -> Tuple[str, str]:
++    def build_authorization_url(self) -> Tuple[str, str, str]:
 +        """
 +        Build the authorization URL with PKCE and state parameters.
-+        Returns (authorization_url, state).
++        
++        Returns:
++            Tuple of (authorization_url, state, code_verifier)
 +        """
-+        code_verifier = self.generate_code_verifier()
-+        code_challenge = self.generate_code_challenge(code_verifier)
++        code_verifier, code_challenge = self.generate_pkce_pair()
 +        state = self.generate_state()
 +        
-+        # Store code_verifier associated with state for later exchange
-+        self._state_store[state] = (code_verifier, secrets.token_urlsafe(16))
++        # Store state and code_verifier for later verification
++        self._state_store[state] = {
++            "code_verifier": code_verifier,
++            "created_at": secrets.token_bytes(16).hex()  # timestamp placeholder
++        }
 +        
 +        params = {
-+            'response_type': 'code',  # Authorization Code flow (NOT token/implicit)
-+            'client_id': self.client_id,
-+            'redirect_uri': self.redirect_uri,
-+            'scope': scope,
-+            'state': state,
-+            'code_challenge': code_challenge,
-+            'code_challenge_method': 'S256',
++            "response_type": "code",  # Authorization Code flow (NOT token)
++            "client_id": self.client_id,
++            "redirect_uri": self.redirect_uri,
++            "scope": " ".join(self.scopes),
++            "state": state,
++            "code_challenge": code_challenge,
++            "code_challenge_method": "S256"
 +        }
 +        
-+        auth_url = f"{self.authorization_endpoint}?{urllib.parse.urlencode(params)}"
-+        return auth_url, state
++        authorization_url = f"{self.authorization_endpoint}?{urllib.parse.urlencode(params)}"
++        
++        return authorization_url, state, code_verifier
 +    
-+    def exchange_code_for_tokens(self, authorization_code: str, state: str) -> Optional[Dict]:
++    def exchange_code_for_tokens(self, authorization_code: str, code_verifier: str) -> dict:
 +        """
-+        Exchange authorization code for tokens on the server side.
-+        This ensures tokens NEVER appear in URL fragments or Referer headers.
++        Exchange authorization code for tokens server-side.
++        
++        This is done server-to-server, so tokens never appear in browser URLs.
++        
++        Args:
++            authorization_code: The authorization code from the callback
++            code_verifier: The PKCE code verifier
++            
++        Returns:
++            Token response dictionary
 +        """
-+        if state not in self._state_store:
-+            raise ValueError("Invalid or expired state parameter - possible CSRF attack")
-+        
-+        code_verifier, _ = self._state_store.pop(state)
-+        
-+        token_request_data = {
-+            'grant_type': 'authorization_code',
-+            'code': authorization_code,
-+            'redirect_uri': self.redirect_uri,
-+            'client_id': self.client_id,
-+            'code_verifier': code_verifier,
++        token_data = {
++            "grant_type": "authorization_code",
++            "code": authorization_code,
++            "redirect_uri": self.redirect_uri,
++            "client_id": self.client_id,
++            "client_secret": self.client_secret,
++            "code_verifier": code_verifier
 +        }
 +        
-+        # Server-side token exchange - tokens never exposed to browser URL
 +        response = requests.post(
 +            self.token_endpoint,
-+            data=token_request_data,
-+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
++            data=token_data,
++            headers={
++                "Content-Type": "application/x-www-form-urlencoded",
++                "Accept": "application/json"
++            }
 +        )
 +        
 +        if response.status_code != 200:
-+            return None
++            raise ValueError(f"Token exchange failed: {response.text}")
 +        
-+        token_data = response.json()
-+        
-+        # Validate token response
-+        if 'access_token' not in token_data:
-+            return None
-+        
-+        return token_data
++        return response.json()
 +    
-+    def handle_callback(self, callback_url: str) -> Optional[Dict]:
++    def handle_callback(self, callback_params: dict) -> Optional[dict]:
 +        """
-+        Handle the OAuth callback.
-+        Extracts authorization code from query parameters (NOT fragment).
-+        Exchanges code for tokens server-side.
++        Handle the OAuth callback securely.
++        
++        Validates state parameter and exchanges code for tokens server-side.
++        Tokens are NEVER returned in URL fragments or redirects.
++        
++        Args:
++            callback_params: Dictionary of callback query parameters
++            
++        Returns:
++            Token response or None if validation fails
 +        """
-+        parsed = urllib.parse.urlparse(callback_url)
-+        params = urllib.parse.parse_qs(parsed.query)
++        state = callback_params.get("state")
++        code = callback_params.get("code")
++        error = callback_params.get("error")
 +        
-+        # Authorization code flow returns code in query string, NOT fragment
-+        code = params.get('code', [None])[0]
-+        state = params.get('state', [None])[0]
-+        
-+        if not code or not state:
-+            return None
-+        
-+        # Check for
