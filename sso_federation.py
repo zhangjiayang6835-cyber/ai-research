@@ -7,6 +7,8 @@ This module implements federated single sign-on with strict tenant isolation:
   - Uses per-tenant public keys for signature verification
   - Prevents replay attacks via jti (JWT ID) tracking
   - Strictly validates all required claims before session creation
+  - Enforces a hardcoded algorithm whitelist to prevent algorithm-confusion
+    downgrade attacks (e.g., RS256 -> HS256)
 """
 
 from __future__ import annotations
@@ -53,6 +55,25 @@ TENANT_AUDIENCE_ISOLATED_CONFIG: dict[str, dict[str, Any]] = {
 TOKEN_MAX_AGE_SECONDS = 300  # 5 minutes
 REQUIRED_CLAIMS = {"iss", "aud", "sub", "exp", "iat", "tid", "jti"}
 
+# ---------------------------------------------------------------------------
+# Algorithm whitelist — prevents JWT algorithm-confusion attacks.
+#
+# The server MUST hardcode exactly which algorithm(s) it accepts and MUST
+# NEVER derive the verification algorithm from the (attacker-controlled)
+# token header. Without this check, an attacker can take a token meant to
+# be verified with an asymmetric algorithm (e.g. RS256, using a public key)
+# and re-sign it with `alg: HS256`, using the known public key as the HMAC
+# secret. A verifier that blindly trusts the header's `alg` would then
+# "successfully" verify the forged token.
+#
+# This demo library only implements HMAC-SHA256 signing/verification, so
+# EXPECTED_ALG pins the single algorithm this service accepts, and
+# ALLOWED_ALGORITHMS is the explicit whitelist checked against the token
+# header before any cryptographic verification is attempted.
+# ---------------------------------------------------------------------------
+EXPECTED_ALG = "HS256"
+ALLOWED_ALGORITHMS = frozenset({"HS256"})
+
 # In production, use Redis or a database for replay protection.
 _used_jti: set[str] = set()
 _session_store: dict[str, dict[str, Any]] = {}
@@ -95,7 +116,7 @@ def _b64decode(data: str) -> bytes:
 
 
 def _create_jwt(payload: dict, secret: str) -> str:
-    header = _b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    header = _b64encode(json.dumps({"alg": EXPECTED_ALG, "typ": "JWT"}).encode())
     body = _b64encode(json.dumps(payload, sort_keys=True).encode())
     signature = hmac.new(
         secret.encode(), f"{header}.{body}".encode(), hashlib.sha256
@@ -103,11 +124,37 @@ def _create_jwt(payload: dict, secret: str) -> str:
     return f"{header}.{body}.{signature}"
 
 
-def _verify_jwt(token: str, secret: str) -> dict[str, Any] | None:
+def _verify_jwt(token: str, secret: str, expected_alg: str = EXPECTED_ALG) -> dict[str, Any] | None:
     parts = token.split(".")
     if len(parts) != 3:
         return None
     header_b64, body_b64, sig = parts
+
+    # --- Algorithm confusion defense ---------------------------------
+    # Parse and validate the `alg` header BEFORE performing any signature
+    # verification. The algorithm used for verification must never be
+    # chosen based on attacker-controlled input.
+    try:
+        header = json.loads(_b64decode(header_b64))
+    except (json.JSONDecodeError, Exception):
+        return None
+
+    if not isinstance(header, dict):
+        return None
+
+    alg = header.get("alg")
+
+    # Reject anything outside the explicit server-side whitelist.
+    if alg not in ALLOWED_ALGORITHMS:
+        return None
+
+    # Reject algorithm downgrade/confusion: the token's alg must match the
+    # algorithm this verification call expects (e.g. reject a token signed
+    # with HS256 when the caller expects RS256, and vice versa).
+    if alg != expected_alg:
+        return None
+    # --------------------------------------------------------------------
+
     expected_sig = hmac.new(
         secret.encode(), f"{header_b64}.{body_b64}".encode(), hashlib.sha256
     ).hexdigest()
@@ -147,6 +194,8 @@ def validate_sso_token(
     Returns an ``SSOSession`` on success or a ``dict`` error on failure.
 
     Security checks performed in order:
+    0. Algorithm whitelist check (alg header) — prevents algorithm
+       confusion / downgrade attacks (e.g. RS256 -> HS256)
     1. Token signature verification
     2. Required claims presence (iss, aud, sub, exp, iat, tid, jti)
     3. Token expiry (exp)
@@ -165,8 +214,10 @@ def validate_sso_token(
             "tenant_id": expected_tenant_id,
         }
 
-    # 2. Verify token signature
-    payload = _verify_jwt(token, tenant_cfg.public_key)
+    # 2. Verify token signature (alg header is checked against the
+    #    hardcoded whitelist and expected algorithm inside _verify_jwt,
+    #    BEFORE any cryptographic verification happens).
+    payload = _verify_jwt(token, tenant_cfg.public_key, expected_alg=EXPECTED_ALG)
     if payload is None:
         return {"success": False, "error": "invalid_token_signature"}
 
