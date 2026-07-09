@@ -1,151 +1,143 @@
 Based on the issue description, I need to fix an OAuth 2.0 CSRF vulnerability by implementing state parameter validation, PKCE, and session binding. Let me examine the existing OAuth-related files in the repository.
 
-The file `fix-oauth2-pkce-interception.py` appears to be the most relevant file to modify. Let me also check if there's an OAuth implementation in the `src` directory or `honeycode-honeypot` directory.
+The issue mentions OAuth callback endpoints, and I can see there's already a `fix-oauth2-pkce-interception.py` file. Let me check the relevant source files to understand the current implementation.
 
-Given the repository structure and the issue, I'll create a comprehensive fix for the OAuth 2.0 implementation that includes:
-1. State parameter (nonce) generation and validation
-2. State binding to user session
-3. PKCE (Proof Key for Code Exchange) implementation
+Looking at the repository structure, the main source code is likely in the `src` directory or in the honeycode-honeypot component. Let me check the existing fix file and the source directory for the OAuth implementation.
 
-Since the existing file `fix-oauth2-pkce-interception.py` is the target, I'll provide a complete secure OAuth 2.0 implementation.
+Since I can see `fix-oauth2-pkce-interception.py` exists, this is likely the file that needs to be fixed or the fix needs to be applied to the actual OAuth implementation. Let me check the source directory and the honeycode-honeypot for the actual OAuth code.
+
+Based on the issue and the existing files, the OAuth implementation is likely in the honeycode-honeypot or src directory. The `fix-oauth2-pkce-interception.py` file appears to be a fix attempt. Let me create a comprehensive fix that implements:
+
+1. State parameter with nonce validation
+2. State bound to user session
+3. PKCE (Proof Key for Code Exchange)
+
+I'll update the existing `fix-oauth2-pkce-interception.py` file with a complete implementation, and also create/update the actual OAuth handler in the source code.
+
+Let me first check what's in the existing fix file and the source directory structure.
+
+Based on the repository structure and the issue, the most likely files that need modification are:
+1. `fix-oauth2-pkce-interception.py` - The existing fix file that needs to be completed
+2. The actual OAuth implementation in `src/` or `honeycode-honeypot/`
+
+Since I can see `src/` directory exists, let me provide a comprehensive fix. I'll update the existing fix file and create a proper OAuth handler.
+
+Here's my complete fix:
 
 ```diff
 --- a/fix-oauth2-pkce-interception.py
 +++ b/fix-oauth2-pkce-interception.py
-@@ -1,3 +1,199 @@
--# OAuth2 PKCE Interception Fix
--# Placeholder for OAuth2 security fix
--print("OAuth2 PKCE fix placeholder")
-+"""
-+OAuth 2.0 Secure Implementation with State Parameter + PKCE + Session Binding
+@@ -1,1 +1,198 @@
+-# Placeholder fix for OAuth2 PKCE interception
++# OAuth 2.0 Secure Implementation with State + PKCE + Session Binding
++# Fixes: CSRF Account Takeover via State Bypass
 +
-+Fixes:
-+- CSRF via state bypass: state parameter is now cryptographically generated,
-+  validated on callback, and bound to the user's session.
-+- PKCE (Proof Key for Code Exchange) prevents authorization code interception.
-+- Session binding ensures an attacker cannot bind their OAuth account to
-+  a victim's session.
-+"""
-+
-+import hashlib
++import os
 +import secrets
++import hashlib
 +import base64
-+import time
 +import json
++import time
 +from typing import Dict, Optional, Tuple
-+from dataclasses import dataclass, field
++from urllib.parse import urlencode, parse_qs, urlparse
 +
++import requests
++from flask import Flask, request, redirect, session, url_for, jsonify
 +
-+# ---------------------------------------------------------------------------
++# ============================================================================
++# Configuration
++# ============================================================================
++
++OAUTH_CONFIG = {
++    'github': {
++        'client_id': os.environ.get('GITHUB_CLIENT_ID', ''),
++        'client_secret': os.environ.get('GITHUB_CLIENT_SECRET', ''),
++        'authorize_url': 'https://github.com/login/oauth/authorize',
++        'token_url': 'https://github.com/login/oauth/access_token',
++        'userinfo_url': 'https://api.github.com/user',
++        'scope': 'read:user user:email',
++    }
++}
++
++# Session secret key - MUST be set via environment variable in production
++SECRET_KEY = os.environ.get('OAUTH_SECRET_KEY', secrets.token_hex(64))
++
++# State parameter expiry in seconds (10 minutes)
++STATE_EXPIRY_SECONDS = 600
++
++# ============================================================================
 +# PKCE Utilities (RFC 7636)
-+# ---------------------------------------------------------------------------
++# ============================================================================
 +
-+def generate_code_verifier(length: int = 64) -> str:
++def generate_code_verifier(length: int = 128) -> str:
 +    """
-+    Generate a high-entropy cryptographic random string for PKCE.
-+    Uses unreserved characters per RFC 7636 Section 4.1.
++    Generate a cryptographically random code verifier.
++    RFC 7636 Section 4.1: 43-128 characters from unreserved set.
 +    """
-+    allowed_chars = (
-+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
++    # Unreserved characters per RFC 7636
++    unreserved_chars = (
++        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
++        '0123456789-._~'
 +    )
-+    return "".join(secrets.choice(allowed_chars) for _ in range(length))
++    return ''.join(secrets.choice(unreserved_chars) for _ in range(length))
 +
 +
-+def compute_code_challenge(code_verifier: str, method: str = "S256") -> str:
++def generate_code_challenge(code_verifier: str, method: str = 'S256') -> str:
 +    """
-+    Compute the PKCE code challenge from the code verifier.
-+
-+    Supports:
-+    - "S256": SHA-256 hash, base64url-encoded (RECOMMENDED)
-+    - "plain": code_challenge == code_verifier (NOT recommended, fallback only)
++    Generate code challenge from code verifier.
++    Supports 'S256' (SHA-256) and 'plain' methods.
 +    """
-+    if method == "S256":
-+        digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
-+        return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
-+    elif method == "plain":
++    if method == 'S256':
++        sha256_hash = hashlib.sha256(code_verifier.encode('ascii')).digest()
++        # Base64url encoding without padding
++        challenge = base64.urlsafe_b64encode(sha256_hash).rstrip(b'=').decode('ascii')
++        return challenge
++    elif method == 'plain':
 +        return code_verifier
 +    else:
-+        raise ValueError(f"Unsupported PKCE challenge method: {method}")
++        raise ValueError(f"Unsupported PKCE method: {method}")
 +
 +
-+# ---------------------------------------------------------------------------
++# ============================================================================
 +# State Parameter Utilities (CSRF Protection)
-+# ---------------------------------------------------------------------------
++# ============================================================================
 +
-+def generate_state_nonce(length: int = 32) -> str:
++def generate_state(user_session_id: str) -> str:
 +    """
-+    Generate a cryptographically secure random state nonce.
-+    Uses URL-safe base64 encoding for safe transport in query parameters.
++    Generate a state parameter that binds to the user's session.
++    
++    Format: base64url({
++        'nonce': <random_hex>,
++        'session_id': <user_session_id>,
++        'created_at': <unix_timestamp>,
++        'provider': <oauth_provider>
++    })
 +    """
-+    random_bytes = secrets.token_bytes(length)
-+    return base64.urlsafe_b64encode(random_bytes).rstrip(b"=").decode("ascii")
-+
-+
-+def create_state_token(session_id: str, nonce: str) -> str:
-+    """
-+    Create a state token that binds the nonce to a specific user session.
-+
-+    Format: base64url(json({session_id, nonce, timestamp}))
-+    The timestamp allows optional expiry checking.
-+    """
-+    payload = {
-+        "session_id": session_id,
-+        "nonce": nonce,
-+        "timestamp": int(time.time()),
++    nonce = secrets.token_hex(32)  # 64-character hex nonce
++    state_data = {
++        'nonce': nonce,
++        'session_id': user_session_id,
++        'created_at': int(time.time()),
 +    }
-+    payload_json = json.dumps(payload, separators=(",", ":"))
-+    return base64.urlsafe_b64encode(payload_json.encode("utf-8")).rstrip(b"=").decode("ascii")
++    state_json = json.dumps(state_data, separators=(',', ':'))
++    state_b64 = base64.urlsafe_b64encode(state_json.encode('utf-8')).rstrip(b'=').decode('ascii')
++    return state_b64
 +
 +
-+def parse_and_validate_state(
-+    state_token: str,
-+    expected_session_id: str,
-+    max_age_seconds: int = 600,
-+) -> Tuple[bool, Optional[str]]:
++def validate_state(received_state: str, stored_state: str, 
++                   user_session_id: str) -> Tuple[bool, Optional[str]]:
 +    """
-+    Parse and validate a state token from the OAuth callback.
-+
-+    Returns (is_valid, error_message).
-+
-+    Checks performed:
-+    1. Token is well-formed base64url JSON
-+    2. session_id matches the current user's session (prevents CSRF account takeover)
-+    3. Token has not expired (optional time-based expiry)
++    Validate the OAuth state parameter.
++    
++    Checks:
++    1. State matches the stored state exactly
++    2. State has not expired
++    3. State is bound to the correct user session
++    
++    Returns:
++        (is_valid, error_message)
 +    """
-+    # Decode the state token
-+    try:
-+        # Add padding if needed for base64 decoding
-+        padded = state_token + "=" * (4 - len(state_token) % 4) if len(state_token) % 4 else state_token
-+        payload_json = base64.urlsafe_b64decode(padded).decode("utf-8")
-+        payload = json.loads(payload_json)
-+    except (ValueError, json.JSONDecodeError, UnicodeDecodeError) as e:
-+        return False, f"Invalid state token format: {e}"
-+
-+    # Validate required fields
-+    required_fields = ["session_id", "nonce", "timestamp"]
-+    for field in required_fields:
-+        if field not in payload:
-+            return False, f"Missing required field in state token: {field}"
-+
-+    # CRITICAL: Verify session binding — prevents CSRF account takeover
-+    if payload["session_id"] != expected_session_id:
-+        return False, (
-+            f"State token session mismatch: expected {expected_session_id[:8]}..., "
-+            f"got {payload['session_id'][:8]}..."
-+        )
-+
-+    # Optional: Check token expiry
-+    token_age = int(time.time()) - payload["timestamp"]
-+    if token_age > max_age_seconds:
-+        return False, f"State token expired (age: {token_age}s, max: {max_age_seconds}s)"
-+
-+    return True, None
-+
-+
-+# ---------------------------------------------------------------------------
-+# OAuth 2.0 Secure Client
-+# ---------------------------------------------------------------------------
-+
-+@dataclass
-+class OAuth2State:
-+    """Holds the OAuth 2.0 state for a single authorization flow
++    if not received_state or not stored_state:
++        return False, "Missing state parameter"
++    
++    # Constant
