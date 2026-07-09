@@ -1,79 +1,80 @@
 import smtplib
 import re
+from email.message import EmailMessage
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from email.header import Header
-import os
+import logging
 
-def sanitize_subject(subject):
+logger = logging.getLogger(__name__)
+
+# SMTP Configuration - should be moved to environment variables in production
+SMTP_HOST = "localhost"
+SMTP_PORT = 25
+SMTP_USERNAME = None
+SMTP_PASSWORD = None
+
+
+def sanitize_subject(subject: str) -> str:
     """
-    Sanitize subject to prevent shell injection and header injection.
+    Sanitize subject line to prevent command injection and header injection.
     Removes shell special characters and newlines that could be used for SMTP header injection.
     """
-    # Remove shell special characters
-    sanitized = re.sub(r'[;&|`$(){}!<>#*?\[\]~\\]', '', subject)
     # Remove newlines and carriage returns to prevent SMTP header injection
-    sanitized = sanitized.replace('\n', '').replace('\r', '')
-    # Strip leading/trailing whitespace
+    sanitized = subject.replace('\n', '').replace('\r', '')
+    
+    # Remove shell special characters that could be used in command injection
+    # Even though we're not using shell, defense in depth
+    shell_chars_pattern = r'[;&|`$(){}[\]!<>#\\\'"*?~]'
+    sanitized = re.sub(shell_chars_pattern, '', sanitized)
+    
+    # Trim whitespace
     sanitized = sanitized.strip()
+    
+    # If subject is empty after sanitization, provide a default
+    if not sanitized:
+        sanitized = "(No Subject)"
+    
     return sanitized
 
-def send_notification(subject, email, smtp_host='localhost', smtp_port=25, sender='noreply@localhost'):
+
+def send_email(subject: str, recipient: str, body: str = "") -> bool:
     """
-    Send email notification using SMTP library API instead of shell command.
-    This prevents command injection vulnerabilities.
+    Send email using SMTP library with proper API calls.
+    Uses EmailMessage.setSubject() for safe subject handling.
     """
-    # Sanitize subject to prevent injection attacks
-    safe_subject = sanitize_subject(subject)
-    
-    # Create message using email library API
-    msg = MIMEMultipart()
-    msg['From'] = sender
-    msg['To'] = email
-    msg['Subject'] = Header(safe_subject, 'utf-8')
-    
-    # Add email body
-    body = f"Notification: {safe_subject}"
-    msg.attach(MIMEText(body, 'plain', 'utf-8'))
-    
-    # Send using SMTP library (no shell involved)
     try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        # Sanitize subject to prevent injection attacks
+        safe_subject = sanitize_subject(subject)
+        
+        # Create email message using EmailMessage API
+        msg = EmailMessage()
+        msg.set_content(body if body else "")
+        msg['Subject'] = safe_subject
+        msg['From'] = "noreply@ai-research.local"
+        msg['To'] = recipient
+        
+        # Connect to SMTP server and send
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            # Use STARTTLS if available for security
+            if server.has_extn('STARTTLS'):
+                server.starttls()
+            
+            # Authenticate if credentials are configured
+            if SMTP_USERNAME and SMTP_PASSWORD:
+                server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            
+            # Send the email using the library's send_message API
             server.send_message(msg)
-    except Exception as e:
-        print(f"Failed to send email: {e}")
-from email.utils import formatdate
-    ts = __import__("time").strftime("%Y-%m-%d %H:%M:%S")
-    
-SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.example.com')
-SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
-SMTP_USER = os.getenv('SMTP_USER', 'noreply@example.com')
-SMTP_DOMAIN = SMTP_USER.split('@')[-1] if '@' in SMTP_USER else 'example.com'
-DKIM_SELECTOR = os.getenv('DKIM_SELECTOR', 'default')
-SMTP_PASS = os.getenv('SMTP_PASS', '')
-FROM_NAME = os.getenv('FROM_NAME', 'AI Research Platform')
-
-<p><b>Time:</b> {ts}</p>
-    'use_tls': True,
-}
-
-DKIM_PRIVATE_KEY = os.getenv('DKIM_PRIVATE_KEY', '')
-
-
-def verify_spf(sender_domain):
-    """
-    Verify that the sender domain has a valid SPF record.
-    Returns True if SPF record exists, False otherwise.
-    """
-    try:
-        answers = dns.resolver.resolve(sender_domain, 'TXT')
-        for rdata in answers:
-            for txt_string in rdata.strings:
-                if b'v=spf1' in txt_string:
-                    return True
+        
+        logger.info(f"Email sent successfully to {recipient} with subject: {safe_subject}")
+        return True
+        
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error sending email to {recipient}: {e}")
         return False
-    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, 
-            dns.resolver.NoNameservers, dns.exception.DNSException):
+    except Exception as e:
+        logger.error(f"Failed to send email to {recipient}: {e}")
+        return False
         return False
 
 
