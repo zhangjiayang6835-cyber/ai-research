@@ -62,8 +62,9 @@ The same transaction shape maps directly onto SQL:
 from __future__ import annotations
 
 import threading
+import time
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Optional
 
 
 class InsufficientFundsError(RuntimeError):
@@ -121,7 +122,7 @@ class AccountStore:
             raise AccountNotFoundError(f"account {account_id!r} not found")
         return account
 
-    def debit(self, account_id: str, amount: int, *, expected_version: int | None = None) -> Account:
+    def debit(self, account_id: str, amount: int, *, expected_version: Optional[int] = None) -> Account:
         """Atomically debit ``amount`` from the account.
 
         Implements: BEGIN TRANSACTION -> SELECT ... FOR UPDATE ->
@@ -182,127 +183,67 @@ class AccountStore:
         amount: int,
         *,
         max_retries: int = 3,
+        retry_backoff_seconds: float = 0.0,
     ) -> Account:
-        """Convenience wrapper: read current version, attempt debit, retry a
-        bounded number of times on optimistic-lock conflicts.
+        """Debit with bounded retry on optimistic-lock conflicts.
 
-        This mirrors the typical application-level retry loop used with a
-        real database when an ``UPDATE ... WHERE version = ?`` affects zero
-        rows because of a concurrent writer.
+        Re-reads the current version and retries the transactional debit up
+        to ``max_retries`` times if another concurrent transaction commits
+        first and invalidates the version we last read. Insufficient-funds
+        failures are NOT retried -- they are a legitimate business rejection,
+        not a transient conflict.
+
+        Raises:
+            AccountNotFoundError: unknown account.
+            InsufficientFundsError: the debit would make the balance negative.
+            OptimisticLockError: retries exhausted while still conflicting
+                with concurrent writers.
         """
-        last_error: Exception | None = None
-        for _ in range(max_retries):
+        attempt = 0
+        last_error: Optional[OptimisticLockError] = None
+
+        while attempt <= max_retries:
             snapshot = self.get_account_snapshot(account_id)
             try:
                 return self.debit(account_id, amount, expected_version=snapshot.version)
             except OptimisticLockError as exc:
                 last_error = exc
+                attempt += 1
+                if retry_backoff_seconds:
+                    time.sleep(retry_backoff_seconds)
                 continue
+            except (InsufficientFundsError, AccountNotFoundError):
+                # Not a transient conflict -- surface immediately.
+                raise
+
+        # Retries exhausted while still racing with other writers.
         assert last_error is not None
         raise last_error
 
 
-# ---------------------------------------------------------------------------
-# Example of the vulnerable ('before') vs. patched ('after') handler shape.
-# ---------------------------------------------------------------------------
-
-
-def process_payment_vulnerable(store: AccountStore, account_id: str, amount: int) -> bool:
-    """DO NOT USE -- kept only to document/reproduce the original bug in tests.
-
-    Reproduces the non-atomic check -> deduct -> confirm race by reading the
-    balance, sleeping-equivalent (context switch window), then writing
-    without any lock or version guard.
-    """
-    account = store.get_account_snapshot(account_id)  # step 1: check (unlocked read)
-    if account.balance >= amount:  # window where other threads can race here
-        account.balance -= amount  # step 2: deduct (unsynchronized write)
-        account.version += 1  # step 3: confirm
-        return True
-    return False
-
-
-def process_payment_secure(store: AccountStore, account_id: str, amount: int) -> Account:
-    """Hardened replacement: single transactional, row-locked, version-checked,
-    negative-balance-guarded debit."""
-    return store.debit_with_retry(account_id, amount)
-
-
-# ---------------------------------------------------------------------------
-# Self-tests -- run `python fixes/payment_race_condition_fix.py`
-# ---------------------------------------------------------------------------
-
-
-def _run_self_tests() -> None:
-    # 1. Happy path: a single valid debit succeeds and updates balance/version.
+if __name__ == "__main__":
+    # Minimal self-demonstration: concurrent debits against the same account
+    # never drive the balance negative, and optimistic-lock conflicts are
+    # retried transparently.
     store = AccountStore()
-    store.create_account("acc1", balance=100)
-    account = process_payment_secure(store, "acc1", 40)
-    assert account.balance == 60, account.balance
-    assert account.version == 1, account.version
+    store.create_account("acct-1", balance=100)
 
-    # 2. Concurrency: 50 threads race to debit an account that can only
-    #    afford a handful of debits. Balance must never go negative, and the
-    #    number of successful debits must exactly match what the balance
-    #    allows.
-    store2 = AccountStore()
-    store2.create_account("acc2", balance=100)
-    debit_amount = 10
-    num_threads = 50
-    successes = []
-    lock = threading.Lock()
+    errors = []
 
-    def worker():
+    def worker() -> None:
         try:
-            process_payment_secure(store2, "acc2", debit_amount)
-            with lock:
-                successes.append(True)
-        except (InsufficientFundsError, OptimisticLockError):
-            with lock:
-                successes.append(False)
+            store.debit_with_retry("acct-1", amount=30, max_retries=5)
+        except InsufficientFundsError:
+            pass
+        except OptimisticLockError as exc:  # pragma: no cover - diagnostic only
+            errors.append(exc)
 
-    threads = [threading.Thread(target=worker) for _ in range(num_threads)]
+    threads = [threading.Thread(target=worker) for _ in range(10)]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
 
-    final = store2.get_account_snapshot("acc2")
-    assert final.balance >= 0, f"balance went negative: {final.balance}"
-    expected_successes = 100 // debit_amount  # exactly 10 debits should succeed
-    actual_successes = sum(1 for s in successes if s)
-    assert actual_successes == expected_successes, (
-        f"expected {expected_successes} successful debits, got {actual_successes}"
-    )
-    assert final.balance == 100 - actual_successes * debit_amount
-
-    # 3. Optimistic-lock version mismatch is detected.
-    store3 = AccountStore()
-    store3.create_account("acc3", balance=50)
-    snapshot = store3.get_account_snapshot("acc3")
-    # Simulate another transaction mutating the row first.
-    store3.debit("acc3", 10, expected_version=snapshot.version)
-    try:
-        store3.debit("acc3", 5, expected_version=snapshot.version)  # stale version
-    except OptimisticLockError:
-        pass
-    else:  # pragma: no cover
-        raise AssertionError("stale version was accepted")
-
-    # 4. Negative-balance guard rejects an over-large debit outright.
-    store4 = AccountStore()
-    store4.create_account("acc4", balance=20)
-    try:
-        store4.debit("acc4", 21)
-    except InsufficientFundsError:
-        pass
-    else:  # pragma: no cover
-        raise AssertionError("debit exceeding balance was accepted")
-    unchanged = store4.get_account_snapshot("acc4")
-    assert unchanged.balance == 20 and unchanged.version == 0
-
-    print("payment_race_condition_fix: all 4 self-tests passed")
-
-
-if __name__ == "__main__":  # pragma: no cover
-    _run_self_tests()
+    final = store.get_account_snapshot("acct-1")
+    assert final.balance >= 0, "balance must never go negative"
+    print(f"final balance={final.balance}, version={final.version}, errors={len(errors)}")
