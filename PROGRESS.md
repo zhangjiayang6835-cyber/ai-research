@@ -31,3 +31,13 @@
 ## ⚠️ 已知问题
 
 - 无
+---
+
+## 2026-07-10 - Issue #791
+
+- Added `FIXES/access_log_crlf_response_splitting_fix.py` for safe `X-Log` access-log header handling.
+- Added `tests/test_access_log_crlf_response_splitting_fix.py` with standard-library `unittest` coverage.
+- Verified:
+  - `uv run python -m py_compile FIXES/access_log_crlf_response_splitting_fix.py tests/test_access_log_crlf_response_splitting_fix.py`
+  - `uv run python -m unittest tests.test_access_log_crlf_response_splitting_fix -v`
+  - `git diff --check`
