@@ -1,0 +1,18 @@
+FROM node:20-alpine AS base
+
+# Security hardening
+RUN apk add --no-cache dumb-init
+
+FROM base AS production
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+COPY --chown=appuser:appgroup . .
+
+USER appuser
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["node", "dist/index.js"]
