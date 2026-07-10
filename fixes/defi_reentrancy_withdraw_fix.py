@@ -72,7 +72,7 @@ class SafeWithdrawVault:
         value = normalize_amount(amount)
         self._balances[account] = self.balance_of(account) + value
 
-    def withdraw(self, account: str, amount: object, transfer: Transfer) -> None:
+def withdraw(self, account: str, amount: object, transfer: Transfer) -> None:
         """Withdraw funds with checks-effects-interactions ordering.
 
         The caller supplies ``transfer`` as the only external interaction. In a
@@ -86,23 +86,16 @@ class SafeWithdrawVault:
 
         value = normalize_amount(amount)
 
-        if self._withdraw_locked:
-            raise ReentrancyBlocked("reentrant withdraw blocked")
-
         current_balance = self.balance_of(account)
         if current_balance < value:
             raise InsufficientFunds("insufficient balance")
 
-        self._withdraw_locked = True
-        self._balances[account] = current_balance - value
-
         try:
+            self._balances[account] = current_balance - value
             transfer(account, value)
-        except Exception:
+        except Exception as e:
             self._balances[account] = current_balance
-            raise
-        finally:
-            self._withdraw_locked = False
+            raise e
 
 
 class VulnerableWithdrawVault:
