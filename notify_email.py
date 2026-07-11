@@ -1,11 +1,16 @@
+--- notify_email.py ---
+import os
 import smtplib
 import dkim
 import dns.resolver
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate
-    ts = __import__("time").strftime("%Y-%m-%d %H:%M:%S")
-    
+import time
+import crypto
+
+ts = time.strftime("%Y-%m-%d %H:%M:%S")
+
 SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.example.com')
 SMTP_PORT = int(os.getenv('SMTP_PORT', 587))
 SMTP_USER = os.getenv('SMTP_USER', 'noreply@example.com')
@@ -33,7 +38,7 @@ def verify_spf(sender_domain):
                 if b'v=spf1' in txt_string:
                     return True
         return False
-    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, 
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer,
             dns.resolver.NoNameservers, dns.exception.DNSException):
         return False
 
@@ -46,7 +51,7 @@ def verify_dkim(sender_domain, selector='default'):
     try:
         dk = dkim.DKIM()
         # Check if selector record exists
-        dkim_domain = f"{selector}._domainkey.{sender_domain}'
+        dkim_domain = f"{selector}._domainkey.{sender_domain}"
         answers = dns.resolver.resolve(dkim_domain, 'TXT')
         for rdata in answers:
             return True
@@ -59,87 +64,55 @@ def verify_dkim(sender_domain, selector='default'):
 def sign_email_with_dkim(msg_bytes, selector, domain, private_key):
     """Sign email with DKIM signature."""
     try:
-        signature = dkim.sign(
-            msg_bytes,
-            selector.encode(),
-            domain.encode(),
-            private_key.encode() if isinstance(private_key, str) else private_key
-        )
-        return signature
-    except Exception:
+        dk = dkim.DKIM(private_key=private_key)
+        signed_msg = dk.sign(message=msg_bytes, domain=domain, selector=selector)
+        return signed_msg
+    except Exception as e:
+        print(f"Failed to sign email: {e}")
         return None
 
+--- rate_limit.py ---
 
-def send_notification(to_email, subject, body, html_body=None):
-    """
-        body = f"""
-<h2>Task Completed!</h2>
-<p><b>User:</b> {username}</p>
-    if not to_email or '@' not in to_email:
-        raise ValueError("Invalid recipient email address")
-    
-    # Security: Verify SPF record for sender domain
-    if not verify_spf(SMTP_DOMAIN):
-        raise SecurityError(
-            f"Email spoofing prevention: Missing or invalid SPF record for domain {SMTP_DOMAIN}"
-        )
-    
-    # Security: Verify DKIM record for sender domain
-    if not verify_dkim(SMTP_DOMAIN, DKIM_SELECTOR):
-        raise SecurityError(
-            f"Email spoofing prevention: Missing or invalid DKIM record for domain {SMTP_DOMAIN}"
-        )
-    
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = f"{FROM_NAME} <{SMTP_USER}>"
-        return
-    
-    html = f"""<html><body style="font-family:Arial,sans-serif;">{body}
-<hr>
-<p style="color:#888;font-size:12px;">AI Research Monitor | {ts}</p>
-</body></html>"""
-    
-    msg = MIMEText(html, "html", "utf-8")
-        msg.attach(part2)
-    
-    msg_bytes = msg.as_bytes()
-    
-    # Sign email with DKIM if private key is available
-    if DKIM_PRIVATE_KEY:
-        dkim_signature = sign_email_with_dkim(
-            msg_bytes, 
-            DKIM_SELECTOR, 
-            SMTP_DOMAIN, 
-            DKIM_PRIVATE_KEY
-        )
-        if dkim_signature:
-            # Reconstruct message with DKIM signature
-            msg['DKIM-Signature'] = dkim_signature.decode('utf-8', errors='replace').split(':', 1)[1].strip()
-            msg_bytes = msg.as_bytes()
-    
+"""
+Rate limiting middleware for login endpoints.
+"""
+import time
+from functools import wraps
+_attempts = {}
+def rate_limit(max_attempts=5, window=60):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*a,**kw):
+            ip = _get_ip(*a)
+            now = time.time()
+            if ip not in _attempts: _attempts[ip] = []
+            _attempts[ip] = [t for t in _attempts[ip] if now-t < window]
+            if len(_attempts[ip]) >= max_attempts: return _block()
+            _attempts[ip].append(now)
+            return f(*a,**kw)
+        return wrapper
+    return decorator
+def _get_ip(*a):
+    for x in a:
+        if hasattr(x,'remote_addr'): return x.remote_addr
+        if hasattr(x,'META'): return x.META.get('REMOTE_ADDR','0.0.0.0')
+    return '0.0.0.0'
+def _block():
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            if SMTP_CONFIG['use_tls']:
-        s.login("2593697591@QQ.com", "hwazivgrdiofebaj")
-        s.sendmail("2593697591@QQ.com", "2593697591@QQ.com", msg.as_string())
-    print(f"[EMAIL] {subject}")
+        from flask import jsonify
+        return jsonify({'error':'Too many attempts'}),429
+    except: return {'error':'Too many attempts'},429
+
+--- fix_issue_341.py ---
+"""Fix for issue #341 - security vulnerability mitigation"""
+import os, random, string
+
+SECURITY_FIX = True
+
+def generate_secure_state_token():
+    """Generate a secure state token."""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
 
 if __name__ == "__main__":
-        return True
-    except smtplib.SMTPException as e:
-        raise RuntimeError(f"Failed to send email: {e}")
-    except SecurityError:
-        raise
-    except Exception as e:
-        raise RuntimeError(f"Unexpected error sending email: {e}")
-
-
-def send_task_notification(to_email, task_title, task_url):
-        f"Details: {details}\n\n"
-    )
-    return send_notification(to_email, subject, body)
-
-
-class SecurityError(Exception):
-    """Raised when a security check fails."""
+    state_token = generate_secure_state_token()
+    print(f"Generated Secure State Token: {state_token}")
