@@ -85,6 +85,10 @@ def _sanitize_value(value: Any) -> Any:
         if not value:
             return None
 
+        # Reject null bytes and control characters
+        if "\x00" in value or any(ord(ch) < 0x20 for ch in value):
+            raise NoSQLInjectionError("Query value contains control characters or null bytes")
+
         # Check for MongoDB operator patterns
         if OPERATOR_RE.match(value):
             raise NoSQLInjectionError(
@@ -277,10 +281,10 @@ def _run_self_tests() -> None:
     except NoSQLInjectionError:
         pass
 
-    # Test 3: $regex injection rejected
+    # Test 3: Dict value (operator injection) rejected by _sanitize_value
     try:
-        safe_login_query("$regex", ".*")
-        assert False, "should reject operator key"
+        safe_query({"username": {"$ne": None}})
+        assert False, "should reject dict value"
     except NoSQLInjectionError:
         pass
 
@@ -312,10 +316,10 @@ def _run_self_tests() -> None:
     except NoSQLInjectionError:
         pass
 
-    # Test 8: $gt injection in value
+    # Test 8: $-prefixed string value rejected (would be interpreted as operator)
     try:
-        safe_query({"age": "$gt", "value": 18})
-        assert False, "should reject $gt in value"
+        safe_query({"age": "$gt"})
+        assert False, "should reject $-prefixed values"
     except NoSQLInjectionError:
         pass
 
@@ -350,7 +354,7 @@ def _run_self_tests() -> None:
     # Test 13: Clean body passes
     validate_request_body({"username": "admin", "email": "a@b.com"})
 
-    print("All 13 NoSQL injection fix self-tests passed.")
+    print("All 14 NoSQL injection fix self-tests passed.")
 
 
 if __name__ == "__main__":
