@@ -207,11 +207,11 @@ class ModelClient:
 # Core Loop Functions
 # ============================================================================
 
-def run(cmd: str, cwd: Optional[str] = None, timeout: int = 30) -> Tuple[int, str, str]:
-    """Run a shell command and return (exit_code, stdout, stderr)."""
+def run(cmd: list[str], cwd: Optional[str] = None, timeout: int = 30) -> Tuple[int, str, str]:
+    """Run a command and return (exit_code, stdout, stderr)."""
     try:
         proc = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True,
+            cmd, shell=False, capture_output=True, text=True,
             timeout=timeout, cwd=cwd,
         )
         return proc.returncode, proc.stdout, proc.stderr
@@ -253,7 +253,7 @@ def export_failures() -> bool:
         return False
     output = GYM / "datasets" / f"honeycode_auto_{int(time.time())}.jsonl"
     rc, stdout, stderr = run(
-        f"{VENV_PYTHON} {export_script} --output {output} --only-failures",
+        [str(VENV_PYTHON), str(export_script), "--output", str(output), "--only-failures"],
         timeout=30,
     )
     if rc == 0:

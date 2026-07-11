@@ -117,5 +117,82 @@
     "total": 100,
     "submissions": [],
     "task_count": 3
+  },
+  "zydd123": {
+    "total": 675,
+    "submissions": [
+      {
+        "issue": 845,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-10T15:38:09.420Z"
+      },
+      {
+        "issue": 846,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-10T16:03:40.416Z"
+      },
+      {
+        "issue": 847,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-10T16:20:15.088Z"
+      },
+      {
+        "issue": 854,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-11T02:06:22.446Z"
+      },
+      {
+        "issue": 859,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-11T02:44:54.136Z"
+      },
+      {
+        "issue": 862,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-11T02:46:02.626Z"
+      },
+      {
+        "issue": 865,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-11T02:46:58.502Z"
+      },
+      {
+        "issue": 868,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-11T02:48:12.093Z"
+      },
+      {
+        "issue": 869,
+        "targetIssue": "N/A",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-11T02:48:42.851Z"
+      }
+    ]
   }
 }

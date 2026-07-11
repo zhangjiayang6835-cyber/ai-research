@@ -1,11 +1,11 @@
 {
-  "lastCheck": "2026-07-09T02:04:48.728Z",
-  "successRate": "57%",
-  "totalRuns": 14,
-  "successRuns": 8,
-  "failureRuns": 6,
-  "openIssues": 54,
-  "openPRs": 16,
+  "lastCheck": "2026-07-11T01:50:30.442Z",
+  "successRate": "50%",
+  "totalRuns": 10,
+  "successRuns": 5,
+  "failureRuns": 5,
+  "openIssues": 190,
+  "openPRs": 30,
   "mergeablePRs": 0,
   "conflictedPRs": 0,
   "healthy": false
