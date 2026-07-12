@@ -58,7 +58,7 @@ jobs:
 
       - name: Attempt merge
         id: merge
-        if: steps.check.outputs.skip != '"'"'true'"'"'
+        if: steps.check.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -75,7 +75,7 @@ jobs:
           fi
 
       - name: Remove label
-        if: always() && steps.check.outputs.skip != '"'"'true'"'"'
+        if: always() && steps.check.outputs.skip != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
