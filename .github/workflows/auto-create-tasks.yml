@@ -104,4 +104,4 @@ jobs:
               console.log("Already at target (" + TARGET + "), nothing to do.");
             }
 
-            console.log("\n✨ 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。感谢贡献！🎉";
+            console.log("\n✨ 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。感谢贡献！🎉");
