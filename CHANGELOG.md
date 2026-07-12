@@ -1,5 +1,7 @@
 # Changelog\n\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: Race Condition in /tmp File Handling (#1160)
 
+fix: Race Condition in /tmp File Handling (#1160)\n- fix: correct script paths in update-leaderboard.yml\n- fix: prevent TOCTOU race condition in /tmp file creation (#1160)\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @AI\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: Race Condition in /tmp File Handling (#1160)
+
 fix: Race Condition in /tmp File Handling (#1160)\n- fix: correct script paths in update-leaderboard.yml\n- fix: prevent TOCTOU race condition in /tmp file creation (#1160)\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @AI\n- @AI Training Bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: Race Condition in /tmp File Handling (#1160)
 
 fix: Race Condition in /tmp File Handling (#1160)\n- fix: correct script paths in update-leaderboard.yml\n- fix: prevent TOCTOU race condition in /tmp file creation (#1160)\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @AI\n- @AI Training Bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: Race Condition in /tmp File Handling (#1160)
