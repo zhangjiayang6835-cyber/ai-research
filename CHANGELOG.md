@@ -1,4 +1,293 @@
-# Changelog\n\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: proper single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @honeycode-bot\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: Race Condition in /tmp File Handling (#1160)
+# Changelog\n\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: auto-merge PR #934\n- fix: auto-merge PR #935
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* Fix: #807 - gRPC Reflection $120
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #936
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* Fix: #805 - Clickjacking $120
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #937
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* Fix: #784 - Host Header Injection $120
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #969
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* Fix: #963 - Host Header Injection → Password Reset Poisoning
+Fix: #955 - CORS Misconfiguration + Origin Reflection → Credential Theft
+
+Host Header Injection (#963):
+- Implement trusted host allow-list
+- Validate Host header before using in URL generation
+- Add secure password reset URL generation with CSRF protection
+- Add WSGI middleware for host header validation
+- All self-tests passing
+
+CORS Misconfiguration (#955):
+- Implement Origin whitelist for CORS
+- Never use wildcard with credentials
+- Return Vary: Origin header
+- Add CORS middleware with proper validation
+- All self-tests passing
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #972
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* Fix: #957 - LDAP Injection → Anonymous Bind Bypass
+Fix: #958 - Zip Slip → Arbitrary File Write via Archive Extraction
+
+LDAP Injection (#957):
+- RFC 4514/4515 special character escaping
+- Wildcard, parentheses, and null character escaped
+- Injection pattern detection (*)(uid=*))
+- Parameterized query building
+- All self-tests passing
+
+Zip Slip (#958):
+- Path normalization and canonical path validation
+- Path traversal detection (..)
+- Sensitive path blocking (/etc/passwd, etc.)
+- File size and total size limits
+- Symlink and dangerous extension checking
+- All self-tests passing
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #976
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* fix: Host Header Injection → Password Reset Poisoning (#963)
+
+- Add ALLOWED_HOSTS whitelist validation
+- Middleware rejects untrusted Host headers with 400
+- Reset URLs use canonical host, not user-supplied value
+- Vary: Origin header included
+
+Resolves #963
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>
+Co-authored-by: bzcrl <bzcrl@users.noreply.github.com>\n- fix: auto-merge PR #978
+
+- #662 Log Injection → CRLF stripping + JSON structured logging + schema validation
+- #665 Blind XXE via SVG Upload → DOCTYPE/ENTITY byte rejection + defusedxml parser + tag whitelist
+- #656 DNS Rebinding SSRF → single DNS resolution pinning + private IP blocking + redirect limiting
+
+Co-authored-by: lushan888 <lushan888@users.noreply.github.com>\n- fix: auto-merge PR #980
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* fix: MongoDB NoSQL Injection → Authentication Bypass (#660)
+
+- safe_login_query() with strict type checking (rejects dicts/lists)
+- safe_query() parameterized query builder — no operator injection
+- Input sanitization: reject $, _, dot notation, null bytes
+- validate_request_body() middleware for request-level protection
+- Defense-in-depth: field name + value validation at every layer
+- Self-tests verify all attack vectors are blocked
+
+Resolves #660
+
+* fix: MongoDB NoSQL Injection → Authentication Bypass (#660)
+
+- safe_login_query() with strict type checking (rejects dicts/lists)
+- safe_query() parameterized query builder — no operator injection
+- Input sanitization: reject $, _, dot notation, null bytes
+- validate_request_body() middleware for request-level protection
+- Defense-in-depth: field name + value validation at every layer
+- Self-tests verify all attack vectors are blocked
+
+Resolves #660
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #982
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* fix: Host Header Injection → Password Reset Poisoning (Issue #963)
+
+- Add TRUSTED_HOSTS whitelist for trusted Host headers
+- Implement validate_host() to verify Host against whitelist
+- Implement get_trusted_host() to fallback to canonical host
+- Implement build_absolute_url() using trusted host for all URLs
+- Add generate_reset_link() for secure password reset link generation
+- Add Flask middleware to enforce trusted Host headers
+- All security checks pass
+
+Closes #963
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #983
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* fix: Host Header Injection → Password Reset Poisoning (Issue #963)
+
+- Add TRUSTED_HOSTS whitelist for trusted Host headers
+- Implement validate_host() to verify Host against whitelist
+- Implement get_trusted_host() to fallback to canonical host
+- Implement build_absolute_url() using trusted host for all URLs
+- Add generate_reset_link() for secure password reset link generation
+- Add Flask middleware to enforce trusted Host headers
+- All security checks pass
+
+Closes #963
+
+* fix: CORS Misconfiguration + Origin Reflection → Credential Theft (Issue #666)
+
+- Add ALLOWED_ORIGINS whitelist for strict origin validation
+- Implement is_origin_allowed() with exact-match (no wildcard/subdomain)
+- Implement build_cors_headers() with safe CORS response headers
+- Never allow '*' with Access-Control-Allow-Credentials: true
+- Always return Vary: Origin header for cache safety
+- Add Flask and Starlette/FastAPI middleware
+- 6 self-tests pass
+
+Closes #666
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #984
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* fix: Host Header Injection → Password Reset Poisoning (Issue #963)
+
+- Add TRUSTED_HOSTS whitelist for trusted Host headers
+- Implement validate_host() to verify Host against whitelist
+- Implement get_trusted_host() to fallback to canonical host
+- Implement build_absolute_url() using trusted host for all URLs
+- Add generate_reset_link() for secure password reset link generation
+- Add Flask middleware to enforce trusted Host headers
+- All security checks pass
+
+Closes #963
+
+* fix: CORS Misconfiguration + Origin Reflection → Credential Theft (Issue #666)
+
+- Add ALLOWED_ORIGINS whitelist for strict origin validation
+- Implement is_origin_allowed() with exact-match (no wildcard/subdomain)
+- Implement build_cors_headers() with safe CORS response headers
+- Never allow '*' with Access-Control-Allow-Credentials: true
+- Always return Vary: Origin header for cache safety
+- Add Flask and Starlette/FastAPI middleware
+- 6 self-tests pass
+
+Closes #666
+
+* fix: Timing Attack on Password Verification → User Enumeration (Issue #678)
+
+- Use hmac.compare_digest() for constant-time password comparison
+- Hash passwords before comparison (never compare plaintext)
+- SecureAuthenticator class hides user existence (same cost for all lookups)
+- Random timing jitter (50-150ms) to defeat statistical timing analysis
+- Uniform error message '用户名或密码错误' for all failures
+- PBKDF2-HMAC-SHA256 with 100k iterations
+- 6 self-tests pass
+
+Closes #678
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #986
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* fix: Host Header Injection → Password Reset Poisoning (Issue #963)
+
+- Add TRUSTED_HOSTS whitelist for trusted Host headers
+- Implement validate_host() to verify Host against whitelist
+- Implement get_trusted_host() to fallback to canonical host
+- Implement build_absolute_url() using trusted host for all URLs
+- Add generate_reset_link() for secure password reset link generation
+- Add Flask middleware to enforce trusted Host headers
+- All security checks pass
+
+Closes #963
+
+* fix: CORS Misconfiguration + Origin Reflection → Credential Theft (Issue #666)
+
+- Add ALLOWED_ORIGINS whitelist for strict origin validation
+- Implement is_origin_allowed() with exact-match (no wildcard/subdomain)
+- Implement build_cors_headers() with safe CORS response headers
+- Never allow '*' with Access-Control-Allow-Credentials: true
+- Always return Vary: Origin header for cache safety
+- Add Flask and Starlette/FastAPI middleware
+- 6 self-tests pass
+
+Closes #666
+
+* fix: Timing Attack on Password Verification → User Enumeration (Issue #678)
+
+- Use hmac.compare_digest() for constant-time password comparison
+- Hash passwords before comparison (never compare plaintext)
+- SecureAuthenticator class hides user existence (same cost for all lookups)
+- Random timing jitter (50-150ms) to defeat statistical timing analysis
+- Uniform error message '用户名或密码错误' for all failures
+- PBKDF2-HMAC-SHA256 with 100k iterations
+- 6 self-tests pass
+
+Closes #678
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #1011\n- fix: auto-merge PR #1013
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #1014
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: auto-merge PR #914
+
+* fix: Mass Assignment privilege escalation via DTO whitelist (#785)
+
+Bounty #785 ($120)
+
+* Fix: #740 - MongoDB NoSQL Injection
+
+---------
+
+Co-authored-by: bzcrl <bzcrl@bzcrldeMac-mini.lan>\n- fix: proper single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n\n### 👥 贡献者\n\n- @bzcrl\n- @Daniel Shanahan\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: proper single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: use single quotes in if conditions\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: simplify auto-rebase-merge to direct merge\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add contents:read permission to auto-close-cheat workflow\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close unclaimed tasks older than 3 days, replace with fresh ones\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add pagination to fetch all open bounty issues\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: add missing closing parenthesis in console.log\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: replace invalid JS unicode escapes in auto-create-tasks\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing using task_templates.json\n- feat: task templates for auto-create workflow\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: dynamic task balancing - always keep 35 open bounty tasks\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: remove issues trigger, improve null check\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: batch review workflow for pending PRs\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🚀 新功能\n\n- feat: auto-close PRs with cheat-detected label\n\n### 🐛 Bug修复\n\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: syntax errors in auto-merge JS (double backtick + orphaned catch)\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: skip no-code comments silently, remove core.setFailed\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n- @honeycode-bot\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: remove core.setFailed on no-code comments, clean up markdown\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @honeycode-bot\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: add git pull --rebase before push to avoid conflicts\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: replace unicode escapes in f-string for Python 3.11 compat\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: correct script paths to scripts/\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @github-actions[bot]\n- @彭于晏\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: Race Condition in /tmp File Handling (#1160)
 
 fix: Race Condition in /tmp File Handling (#1160)\n\n### 👥 贡献者\n\n- @彭于晏\n- @github-actions[bot]\n\n---\n> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\n## 2026-07-12\n\n### 🐛 Bug修复\n\n- fix: Race Condition in /tmp File Handling (#1160)
 
