@@ -6,6 +6,11 @@ import html
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
 
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
+
 # Simulated user database
 users = {
     'admin': {'password': 'admin123', 'role': 'admin'},

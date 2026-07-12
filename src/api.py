@@ -4,6 +4,11 @@ from email_validator import validate_email, EmailNotValidError
 
 
 app = Flask(__name__)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
     
