@@ -52,9 +52,6 @@ jobs:
               core.setOutput("skip", "true"); return;
             }
             core.setOutput("skip", "false");
-            core.setOutput("head_ref", p.head.ref);
-            core.setOutput("head_repo", p.head.repo.full_name);
-            core.setOutput("is_fork", (p.base.repo.full_name !== p.head.repo.full_name) ? "true" : "false");
 
       - name: Attempt merge
         id: merge
@@ -64,24 +61,28 @@ jobs:
         run: |
           PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
           echo "Merging PR #${PR_NUM}..."
-          gh pr merge ${PR_NUM} --repo ${{ github.repository }} --squash --subject "fix: auto-merge PR #${PR_NUM}" 2>&1 && echo "merged=true" >> $GITHUB_OUTPUT && exit 0
-          echo "gh pr merge failed, trying API..."
-          RESULT=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/merge -X PUT -f merge_method="squash" -f commit_title="fix: auto-merge PR #${PR_NUM}" --jq ".message" 2>&1)
-          echo "API result: ${RESULT}"
-          if echo "${RESULT}" | grep -qi "successful"; then
+          OUTPUT=$(gh pr merge ${PR_NUM} --repo ${{ github.repository }} --squash --subject "fix: auto-merge PR #${PR_NUM}" 2>&1)
+          echo "${OUTPUT}"
+          if echo "${OUTPUT}" | grep -qiE "(merged|success|already.*merged)"; then
             echo "merged=true" >> $GITHUB_OUTPUT
           else
             echo "merged=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Remove label
-        if: always() && steps.check.outputs.skip != 'true'
+      - name: Auto-label on failure
+        if: steps.merge.outputs.merged == 'false'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
+          gh pr edit ${PR_NUM} --repo ${{ github.repository }} --add-label needs-merge-attention 2>/dev/null || true
+
+      - name: Clean up label
+        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
           gh pr edit ${PR_NUM} --repo ${{ github.repository }} --remove-label auto-rebase 2>/dev/null || true
-          if [[ "${{ steps.merge.outputs.merged }}" != "true" ]]; then
-            gh pr edit ${PR_NUM} --repo ${{ github.repository }} --add-label needs-rebase 2>/dev/null || true
-          fi
