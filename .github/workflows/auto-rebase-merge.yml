@@ -10,10 +10,6 @@ on:
         required: false
         type: string
 
-concurrency:
-  group: auto-rebase-merge-${{ github.event.inputs.pr_number || github.event.pull_request.number }}
-  cancel-in-progress: false
-
 permissions:
   contents: write
   pull-requests: write
@@ -33,116 +29,58 @@ jobs:
             } else if (context.payload.pull_request) {
               prNum = context.payload.pull_request.number;
             }
-            core.setOutput("pr_number", prNum);
+            core.setOutput("pr_number", prNum || "");
 
-      - name: Check eligibility
+      - name: Check mergeability
         id: check
         uses: actions/github-script@v7
         with:
           script: |
-            const prNum = parseInt('${{ steps.pr_info.outputs.pr_number }}');
+            const prNum = parseInt("${{ steps.pr_info.outputs.pr_number }}");
             if (!prNum) { core.setOutput("skip", "true"); return; }
             const pr = await github.rest.pulls.get({
               owner: context.repo.owner, repo: context.repo.repo, pull_number: prNum
             });
-            if (pr.data.merged || pr.data.state === "closed") {
+            const p = pr.data;
+            if (p.merged || p.state === "closed") {
+              console.log("PR #" + prNum + " already merged/closed");
               core.setOutput("skip", "true"); return;
             }
-            const labels = pr.data.labels.map(l => l.name);
-            const ok = labels.includes("auto-rebase") || (labels.includes("auto-reviewed") && labels.includes("approved"));
-            if (!ok) { core.setOutput("skip", "true"); return; }
+            const labels = p.labels.map(l => l.name);
+            if (!labels.includes("auto-rebase")) {
+              console.log("PR #" + prNum + " missing auto-rebase label");
+              core.setOutput("skip", "true"); return;
+            }
             core.setOutput("skip", "false");
-            core.setOutput("head_ref", pr.data.head.ref);
+            core.setOutput("head_ref", p.head.ref);
+            core.setOutput("head_repo", p.head.repo.full_name);
+            core.setOutput("is_fork", (p.base.repo.full_name !== p.head.repo.full_name) ? "true" : "false");
 
-      - uses: actions/checkout@v4
-        if: steps.check.outputs.skip != 'true'
-        with:
-          fetch-depth: 0
-          ref: refs/pull/${{ steps.pr_info.outputs.pr_number }}/head
-
-      - name: Git setup
-        if: steps.check.outputs.skip != 'true'
+      - name: Attempt merge
+        id: merge
+        if: steps.check.outputs.skip != "true"
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "AI Training Bot"
-          git config user.email "bot@ai-training.local"
-
-      - name: Fetch latest master and rebase
-        id: rebase
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          git fetch origin master
-          git fetch origin +refs/heads/master:refs/remotes/origin/master
-          if git rebase origin/master; then
-            echo "success=true" >> $GITHUB_OUTPUT
+          PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
+          echo "Merging PR #${PR_NUM}..."
+          gh pr merge ${PR_NUM} --repo ${{ github.repository }} --squash --subject "fix: auto-merge PR #${PR_NUM}" 2>&1 && echo "merged=true" >> $GITHUB_OUTPUT && exit 0
+          echo "gh pr merge failed, trying API..."
+          RESULT=$(gh api repos/${{ github.repository }}/pulls/${PR_NUM}/merge -X PUT -f merge_method="squash" -f commit_title="fix: auto-merge PR #${PR_NUM}" --jq ".message" 2>&1)
+          echo "API result: ${RESULT}"
+          if echo "${RESULT}" | grep -qi "successful"; then
+            echo "merged=true" >> $GITHUB_OUTPUT
           else
-            echo "success=false" >> $GITHUB_OUTPUT
+            echo "merged=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Auto-resolve conflicts
-        if: steps.rebase.outputs.success == 'false'
-        run: |
-          for f in $(git diff --name-only --diff-filter=U); do
-            case "$f" in
-              *.py|*.json|*.md|*.yml|*.yaml|*.txt)
-                git checkout --theirs "$f" 2>/dev/null || git checkout --ours "$f" 2>/dev/null || true
-                git add "$f" 2>/dev/null || true
-                echo "Resolved: $f" ;;
-            esac
-          done
-          git commit --no-edit 2>/dev/null || true
-
-      - name: Push rebased branch
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          BRANCH="${{ steps.check.outputs.head_ref }}"
-          git push origin HEAD:refs/heads/${BRANCH} --force 2>&1 || echo "Push failed"
-
-      - name: Wait for GitHub to process
-        if: steps.check.outputs.skip != 'true'
-        run: sleep 10
-
-      - name: Remove auto-rebase label
-        if: steps.check.outputs.skip != 'true'
+      - name: Remove label
+        if: always() && steps.check.outputs.skip != "true"
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
           gh pr edit ${PR_NUM} --repo ${{ github.repository }} --remove-label auto-rebase 2>/dev/null || true
-
-      - name: Merge via API
-        if: steps.check.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PR_NUM="${{ steps.pr_info.outputs.pr_number }}"
-          # Try PR merge first
-          gh pr merge ${PR_NUM} --repo ${{ github.repository }} --merge --subject "Auto-merge: fix #${PR_NUM}" 2>&1 && exit 0
-          # Fallback: try direct branch merge via API
-          BRANCH="${{ steps.check.outputs.head_ref }}"
-          echo "PR merge failed, trying direct branch merge..."
-          gh api repos/${{ github.repository }}/merges -X POST \
-            -f base=master \
-            -f head=${BRANCH} \
-            -f commit_message="Merge PR #${PR_NUM}: auto-merged" 2>&1 || echo "Direct merge also failed"
-
-      - name: Success comment
-        if: success() && steps.check.outputs.skip != 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNum = parseInt('${{ steps.pr_info.outputs.pr_number }}');
-            await github.rest.issues.createComment({
-              issue_number: prNum, owner: context.repo.owner, repo: context.repo.repo,
-              body: "✅ Auto rebase and merge successful!\n\n> Virtual tokens for learning ranking only, not redeemable for cash or crypto. Thanks for your contribution!"
-            });
-
-      - name: Failure comment
-        if: failure() && steps.check.outputs.skip != 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNum = parseInt('${{ steps.pr_info.outputs.pr_number }}');
-            await github.rest.issues.createComment({
-              issue_number: prNum, owner: context.repo.owner, repo: context.repo.repo,
-              body: "❌ Auto rebase failed, manual conflict resolution needed.\n\n> Virtual tokens for learning ranking only, not redeemable for cash or crypto."
-            });
+          if [[ "${{ steps.merge.outputs.merged }}" != "true" ]]; then
+            gh pr edit ${PR_NUM} --repo ${{ github.repository }} --add-label needs-rebase 2>/dev/null || true
+          fi
