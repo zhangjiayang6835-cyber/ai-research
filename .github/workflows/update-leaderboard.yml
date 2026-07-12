@@ -22,7 +22,7 @@ jobs:
 
       - name: Regenerate leaderboard
         run: |
-          python scripts/leaderboard.py --all
+          python leaderboard.py --all
           echo "Leaderboard regenerated"
 
       - name: Commit and push
@@ -37,4 +37,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python scripts/update_leaderboard.py --issue-number 650 || true
+          python update_leaderboard.py --issue-number 650 || true
