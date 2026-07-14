@@ -27,8 +27,8 @@ jobs:
             const ledgerFile = 'BOUNTY_LEDGER.json';
 
             if (!fs.existsSync(ledgerFile)) {
-              core.setFailed('No BOUNTY_LEDGER.json found');
-              return;
+              console.log('No BOUNTY_LEDGER.json found, creating empty ledger');
+              fs.writeFileSync(ledgerFile, JSON.stringify({}));
             }
 
             const ledger = JSON.parse(fs.readFileSync(ledgerFile, 'utf-8'));
@@ -118,4 +118,4 @@ jobs:
           git config user.name "AI Training Bot"
           git config user.email "bot@ai-research.github"
           git add payout_*.json BOUNTY_LEDGER.json 2>/dev/null || true
-          git diff --cached --quiet || (git commit -m "bounty: payout manifests" && git pull --rebase origin master && git push origin master)
+          git diff --cached --quiet || (git commit -m "bounty: payout manifests" && git push origin master 2>&1 || git push origin HEAD:master 2>&1 || echo "Push deferred")

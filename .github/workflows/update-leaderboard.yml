@@ -2,7 +2,7 @@ name: Update Leaderboard
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # 每 6 小时
+    - cron: "0 2 * * *"   # 每天 UTC 02:00   # 每 6 小时
   workflow_dispatch:
 
 permissions:
@@ -31,6 +31,7 @@ jobs:
           git config user.email "bot@honeycode-honeypot.dev"
           git add LEADERBOARD.md docs/leaderboard.svg docs/leaderboard.json
           git commit -m "chore: auto-update leaderboard" || echo "Nothing to commit"
+          git pull --rebase origin master || true
           git push
 
       - name: Update leaderboard Issue

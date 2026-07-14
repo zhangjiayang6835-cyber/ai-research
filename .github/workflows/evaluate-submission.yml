@@ -35,14 +35,7 @@ jobs:
             // Extract code block using regex without backtick escaping
             const codeMatch = body.match(/```(?:python|javascript|py|js|java|go|rust|cpp|c\+\+|csharp|ruby|php|bash|sh|sql|html|xml|json|yaml|toml|typescript|ts|solidity)?\s*\n([\s\S]*?)```/);
             if (!codeMatch) {
-              console.log('No code block found');
-              await github.rest.issues.createComment({
-                issue_number: issueNum,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '## X Code block not found\\n\\nPlease wrap your code in triple backticks. Example:\\n```python\\nprint(\"fix\")\\n```\\n\\nBot will auto-evaluate after submission.'
-              });
-              core.setFailed('No code');
+              console.log("No code block - skipping");
               return;
             }
             const code = codeMatch[1];

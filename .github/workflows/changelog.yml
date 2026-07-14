@@ -1,11 +1,14 @@
 name: Generate Changelog
+
 on:
-  push:
-    branches: [master]
+  schedule:
+    - cron: "0 10 * * 1"
   workflow_dispatch:
+
 permissions:
   contents: write
   issues: write
+
 jobs:
   changelog:
     runs-on: ubuntu-latest
@@ -19,67 +22,18 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const fs = require("fs");
-
-            // Get commits since last tag or last 50
             const { data: commits } = await github.rest.repos.listCommits({
               owner, repo, per_page: 50
             });
-
-            let changelog = "# Changelog\\n\\n";
-            const today = new Date().toISOString().slice(0, 10);
-            changelog += "## " + today + "\\n\\n";
-
-            const categories = { fix: [], feat: [], docs: [], chore: [], other: [] };
-            const contributors = new Set();
-
+            let changelog = "# Changelog\n\n";
+            changelog += "## " + new Date().toISOString().slice(0, 10) + "\n\n";
             for (const c of commits) {
-              const msg = c.commit.message.split("\\n")[0];
-              const author = c.commit.author.name;
-              contributors.add(author);
-
-              if (msg.startsWith("fix:")) categories.fix.push(msg);
-              else if (msg.startsWith("feat:")) categories.feat.push(msg);
-              else if (msg.startsWith("docs:")) categories.docs.push(msg);
-              else if (msg.startsWith("chore:")) categories.chore.push(msg);
-              else categories.other.push(msg);
+              const msg = c.commit.message.split("\n")[0];
+              changelog += "- " + msg + " (@" + c.commit.author.name + ", " + c.sha.slice(0, 7) + ")\n";
             }
-
-            if (categories.feat.length > 0) {
-              changelog += "### 🚀 新功能\\n\\n";
-              for (const m of categories.feat) changelog += "- " + m + "\\n";
-              changelog += "\\n";
-            }
-            if (categories.fix.length > 0) {
-              changelog += "### 🐛 Bug修复\\n\\n";
-              for (const m of categories.fix) changelog += "- " + m + "\\n";
-              changelog += "\\n";
-            }
-            if (categories.docs.length > 0) {
-              changelog += "### 📖 文档\\n\\n";
-              for (const m of categories.docs) changelog += "- " + m + "\\n";
-              changelog += "\\n";
-            }
-
-            changelog += "### 👥 贡献者\\n\\n";
-            for (const c of contributors) changelog += "- @" + c + "\\n";
-            changelog += "\\n---\\n";
-            changelog += "> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。\\n";
-
-            // Read existing or create new
-            let existing = "";
-            let fileSha = undefined;
-            try {
-              const { data: f } = await github.rest.repos.getContent({ owner, repo, path: "CHANGELOG.md" });
-              existing = Buffer.from(f.content, "base64").toString();
-              fileSha = f.sha;
-            } catch (e) {}
-
-            const newContent = changelog + (existing.includes("# Changelog") ? existing.replace("# Changelog\\n\\n", "") : existing);
-
-            await github.rest.repos.createOrUpdateFileContents({
-              owner, repo, path: "CHANGELOG.md",
-              message: "chore: update changelog",
-              content: Buffer.from(newContent).toString("base64"),
-              sha: fileSha
-            });
-            console.log("Changelog updated with " + commits.length + " commits");
+            fs.writeFileSync("CHANGELOG.md", changelog);
+            console.log("Changelog generated with " + commits.length + " commits");
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update changelog"
+          file_pattern: CHANGELOG.md

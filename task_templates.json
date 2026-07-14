@@ -1,0 +1,530 @@
+[
+  {
+    "title": "[BUG] WebSocket CSRF → Cross-Origin Data Exfiltration $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## WebSocket CSRF 跨源数据泄露\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            WebSocket 端点 \\"
+  },
+  {
+    "title": "[BUG] Bleichenbacher Oracle in RSA-OAEP Decryption $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## Bleichenbacher Oracle RSA-OAEP 解密\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            RSA-OAEP 解密实现存在 padding oracle：当 ciphertext 解密失败时，服务器返回的报错信息会根据失败类型（padding 无效 / MAC 不匹配）有所区别，形成可被利用的 oracle。\r\n\r\n            ### 要求\r\n            实现 constant-time 错误返回，消除 side-channel oracle。\r\n\r\n            ### 验收标准\r\n            - [ ] 所有解密失败返回统一错误消息\r\n            - [ ] constant-time 比较操作\r\n            - [ ] 通过 Bleichenbacher 测试向量"
+  },
+  {
+    "title": "[BUG] Reentrancy via ERC-777 Callback in Withdraw Function $180",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## ERC-777 回调重入攻击\r\n\r\n            **难度**: Expert | **赏金**: $180\r\n\r\n            ### 漏洞描述\r\n            \\"
+  },
+  {
+    "title": "[BUG] AWS IAM Privilege Escalation via PassRole + EC2 $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## AWS IAM PassRole 权限提升\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            IAM 策略允许 \\"
+  },
+  {
+    "title": "[BUG] Race Condition in /tmp File Handling (TOCTOU) $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## /tmp 文件处理的 TOCTOU 条件竞争\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            脚本先检查 \\"
+  },
+  {
+    "title": "[BUG] JWT Algorithm Confusion (RS256→HS256 Downgrade) $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## JWT Algorithm Confusion (RS256→HS256 降级)\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            JWT 库在验证 token 时会使用 \\"
+  },
+  {
+    "title": "[BUG] Blind SSRF via DNS Rebinding Bypass $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## DNS Rebinding 绕过 SSRF 防护\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            SSRF 防护仅检查首次 DNS 解析结果，攻击者使用 DNS rebinding 技术：第一次解析返回合法 IP（通过白名单），第二次解析指向内网 169.254.169.254（AWS metadata）。\r\n\r\n            ### 要求\r\n            实现 DNS TTL 限制 + 响应内容校验 + 禁用 follow redirect。\r\n\r\n            ### 验收标准\r\n            - [ ] 对每个请求强制执行 DNS 重新解析\r\n            - [ ] 拒绝私有 IP 范围的响应\r\n            - [ ] 限制重定向次数"
+  },
+  {
+    "title": "[BUG] Server-Side Prototype Pollution to RCE $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## 服务端原型链污染 → 远程代码执行\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            Express 应用使用 \\"
+  },
+  {
+    "title": "[BUG] GraphQL Batch Query + Rate Limit Bypass $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## GraphQL Batch Query 速率限制绕过\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            GraphQL 端点允许 batch 请求（一次发送多个 query），但速率限制只按 HTTP 请求计数，而非 query 数量。攻击者可在一个请求中发送数百个 query，绕过限制进行数据爬取。\r\n\r\n            ### 要求\r\n            实现 query 复杂度分析 + 深度限制 + 按 cost 计费。\r\n\r\n            ### 验收标准\r\n            - [ ] 计算每个 query 的复杂度分数\r\n            - [ ] 对 batch 请求聚合计算总成本\r\n            - [ ] 限制最大查询深度"
+  },
+  {
+    "title": "[BUG] Python Pickle Deserialization RCE via Cache $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## Pickle 反序列化 RCE（通过缓存系统）\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            Redis 缓存中存储了 \\"
+  },
+  {
+    "title": "[BUG] MongoDB NoSQL Injection → Authentication Bypass $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## MongoDB NoSQL 注入 → 认证绕过\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            登录接口 JSON body 直接传入 \\"
+  },
+  {
+    "title": "[BUG] Race Condition in Distributed Transaction → Double Spend $180",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## 分布式事务条件竞争 → 双花攻击\r\n\r\n            **难度**: Hard | **赏金**: $180\r\n\r\n            ### 漏洞描述\r\n            支付系统的\"检查余额→扣款→确认\"三步操作非原子执行。攻击者并发发送多个请求，每个请求都通过余额检查，导致余额被多次扣除（变为负数）。\r\n\r\n            ### 要求\r\n            使用分布式锁 / 乐观锁 / 事务隔离级别。\r\n\r\n            ### 验收标准\r\n            - [ ] 使用数据库事务 + 行级锁\r\n            - [ ] 引入乐观锁版本号\r\n            - [ ] 扣款后检查余额不为负"
+  },
+  {
+    "title": "[BUG] Log Injection → Log Forging → SIEM Poisoning $120",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## 日志注入 → 日志伪造 → SIEM 投毒\r\n\r\n            **难度**: Hard | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            用户输入（username, User-Agent）未经过滤直接写入日志文件。攻击者注入换行符伪造日志条目，污染 SIEM 系统检测逻辑。\r\n\r\n            ### 要求\r\n            所有日志输入进行 CRLF 转义 + 日志格式严格校验。\r\n\r\n            ### 验收标准\r\n            - [ ] 移除 / 转义 \\\\r \\\\n\r\n            - [ ] 结构化日志（JSON 格式）\r\n            - [ ] 引入日志 schema 校验"
+  },
+  {
+    "title": "[BUG] CL.TE HTTP Request Smuggling → Cache Poisoning $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## CL.TE HTTP Request Smuggling → 缓存投毒\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            前端 nginx 使用 Content-Length，后端使用 Transfer-Encoding: chunked。攻击者构造歧义请求，使前后端解析不一致，导致后续用户请求被劫持并返回恶意内容。\r\n\r\n            ### 要求\r\n            统一 HTTP 解析器 / 禁用 HTTP/1.0 downgrade / 使用 HTTP/2。\r\n\r\n            ### 验收标准\r\n            - [ ] TE 和 CL 不能同时存在\r\n            - [ ] 拒绝格式错误的 Transfer-Encoding\r\n            - [ ] 使用 HTTP/2 消除歧义"
+  },
+  {
+    "title": "[BUG] OAuth 2.0 CSRF → Account Takeover via State Bypass $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## OAuth 2.0 CSRF → 账户接管（State 绕过）\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            OAuth 回调端点未验证 \\"
+  },
+  {
+    "title": "[BUG] Blind XXE via SVG Upload → SSRF + Data Exfil $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## SVG 上传 Blind XXE → SSRF + 数据外带\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            SVG 文件上传功能未禁用外部实体解析。攻击者可构造包含外部实体的 SVG，通过 OOB (Out-of-Band) 技术将服务器文件外带到攻击者控制的服务器。\r\n\r\n            ### 要求\r\n            禁用 XML 外部实体解析 + 白名单标签过滤。\r\n\r\n            ### 验收标准\r\n            - [ ] 禁用 DOCTYPE\r\n            - [ ] 禁用外部实体 (\\\\<!ENTITY)\r\n            - [ ] 限制 SVG 标签白名单"
+  },
+  {
+    "title": "[BUG] CORS Misconfiguration + Origin Reflection → Credential Theft $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## CORS 配置错误 + Origin 反射 → 凭证窃取\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            API 响应头 \\"
+  },
+  {
+    "title": "[BUG] Java RMI Deserialization → Remote Code Execution $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## Java RMI 反序列化 RCE\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            Java RMI 端点暴露在公网，攻击者可通过 ysoserial 工具发送精心构造的反序列化 payload，触发 \\"
+  },
+  {
+    "title": "[BUG] LDAP Injection → Anonymous Bind Bypass $120",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## LDAP 注入 → 匿名绑定绕过\r\n\r\n            **难度**: Hard | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            LDAP 查询直接拼接用户输入：\\"
+  },
+  {
+    "title": "[BUG] Zip Slip → Arbitrary File Write via Archive Extraction $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## Zip Slip → 任意文件写入\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            ZIP 文件解压时未验证文件名是否包含 \\"
+  },
+  {
+    "title": "[BUG] Session Fixation + Session ID in URL $120",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## Session Fixation + URL 中的 Session ID\r\n\r\n            **难度**: Hard | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            应用在 URL 参数中接受 session ID（\\"
+  },
+  {
+    "title": "[BUG] IDOR in GraphQL Nested Query → Mass Data Leak $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## GraphQL 嵌套查询中的 IDOR → 批量数据泄露\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            GraphQL 查询 \\"
+  },
+  {
+    "title": "[BUG] Web Cache Poisoning via Unkeyed Header $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## Web 缓存投毒（Unkeyed Header）\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            CDN/反向代理将 \\"
+  },
+  {
+    "title": "[BUG] Blind Command Injection via Email Header $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## SMTP Header 注入 → 盲命令注入\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            邮件发送功能将用户输入的 Subject 直接传给 \\"
+  },
+  {
+    "title": "[BUG] Host Header Injection → Password Reset Poisoning $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## Host Header 注入 → 密码重置投毒\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            密码重置链接使用请求中的 \\"
+  },
+  {
+    "title": "[BUG] Mass Assignment in User Profile Update → Privilege Escalation $120",
+    "diff": "medium",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "medium"
+    ],
+    "body": "## Mass Assignment → 权限提升\r\n\r\n            **难度**: Medium | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            用户资料更新接口直接绑定所有请求参数到模型：\\"
+  },
+  {
+    "title": "[BUG] SSTI in Email Template Engine → Sandbox Escape $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## 邮件模板 SSTI → Sandbox Escape\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            邮件模板引擎使用用户输入：\\"
+  },
+  {
+    "title": "[BUG] JWT Kid Injection → Path Traversal → Secret Key Leak $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## JWT Kid 注入 → 路径遍历 → 密钥泄露\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            JWT verification 使用 \\"
+  },
+  {
+    "title": "[BUG] Timing Attack on Password Verification → User Enumeration $120",
+    "diff": "medium",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "medium"
+    ],
+    "body": "## 密码验证时序攻击 → 用户枚举\r\n\r\n            **难度**: Medium | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            密码比较使用逐字符比较 \\"
+  },
+  {
+    "title": "[BUG] Web Cache Deception → Session Token Leak $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## Web Cache Deception → Session Token 泄露\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            静态文件 CDN 配置为缓存 \\"
+  },
+  {
+    "title": "[BUG] OAuth Access Token in Referer Header → Token Leak $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## OAuth Access Token 在 Referer 中泄露\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            OAuth 回调 URL 包含 fragment (#access_token=xxx)，但页面中包含跳转到外部站点的链接。Referer header 会携带完整的 URL（包括 fragment），导致 token 泄露给第三方。\r\n\r\n            ### 要求\r\n            使用 state 参数 + PKCE + 服务器端接收 auth code。\r\n\r\n            ### 验收标准\r\n            - [ ] 使用 Authorization Code + PKCE 流程\r\n            - [ ] 不在 URL fragment 中传递 token\r\n            - [ ] Referrer-Policy: no-referrer"
+  },
+  {
+    "title": "[BUG] CRLF Injection in Access Log → HTTP Response Splitting $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## 访问日志 CRLF 注入 → HTTP 响应拆分\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            HTTP 访问日志将 User-Agent 直接写入响应头：\\"
+  },
+  {
+    "title": "[BUG] Docker Container Escape via Capability Abuse $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## Docker 容器逃逸（Capability 滥用）\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            容器以 \\"
+  },
+  {
+    "title": "[BUG] Stack Buffer Overflow via gets() → ROP Chain $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## Stack Buffer Overflow (gets) → ROP Chain\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            C 程序使用 \\"
+  },
+  {
+    "title": "[BUG] SSRF via Gopher Protocol → Redis RCE $180",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## Gopher 协议 SSRF → Redis RCE\r\n\r\n            **难度**: Hard | **赏金**: $180\r\n\r\n            ### 漏洞描述\r\n            URL 解析器支持 \\"
+  },
+  {
+    "title": "[BUG] WebSocket Hijacking via Missing Cookie Validation $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## WebSocket 劫持（缺少 Cookie 校验）\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            WebSocket 升级请求仅验证 Origin，但 WebSocket 连接建立后不验证 Cookie／Token。攻击者只要通过初始 Origin 校验，后续消息即可冒充其他用户。\r\n\r\n            ### 要求\r\n            WebSocket 每条消息都携带并验证 JWT / Session token。\r\n\r\n            ### 验收标准\r\n            - [ ] 连接时验证 Bearer token\r\n            - [ ] 每条消息验证 token 有效性\r\n            - [ ] Token 绑定用户 session"
+  },
+  {
+    "title": "[BUG] ECB Mode Encryption → Data Leak via Pattern Matching $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## ECB 加密模式 → 数据泄露\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            用户数据使用 AES-ECB 加密存储。ECB 模式下相同明文块产生相同密文块，攻击者可通过密文模式识别用户数据特征（如\"admin\"vs\"user\"权限位）。\r\n\r\n            ### 要求\r\n            使用 AES-GCM / CBC + HMAC 替代 ECB。\r\n\r\n            ### 验收标准\r\n            - [ ] 不使用 ECB 模式\r\n            - [ ] 使用认证加密 (AEAD)\r\n            - [ ] 初始化向量随机生成"
+  },
+  {
+    "title": "[BUG] Predictable OAuth State Token → CSRF + Account Takeover $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## 可预测 OAuth State Token → CSRF 账户接管\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            OAuth state 参数使用自增整数 / 时间戳生成，攻击者可预测下一个 state 值，构造恶意 OAuth 链接诱导受害者点击，绑定攻击者账号。\r\n\r\n            ### 要求\r\n            使用 crypto.randomBytes() 生成不可预测的 state。\r\n\r\n            ### 验收标准\r\n            - [ ] 使用安全的随机数生成器\r\n            - [ ] state 至少 16 字节\r\n            - [ ] state 绑定用户 session + 单次使用"
+  },
+  {
+    "title": "[BUG] Second-Order SQL Injection via Stored XSS Data $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## 二阶 SQL 注入（通过存储的 XSS 数据）\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            用户留言存储到数据库时参数化查询安全。但之后管理员在\"导出所有留言到 CSV\"功能中直接拼接数据到 SQL：\\"
+  },
+  {
+    "title": "[BUG] HTTP/2 Downgrade → Request Smuggling $200",
+    "diff": "expert",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "expert"
+    ],
+    "body": "## HTTP/2 → HTTP/1.1 降级请求走私\r\n\r\n            **难度**: Expert | **赏金**: $200\r\n\r\n            ### 漏洞描述\r\n            负载均衡器接受 HTTP/2 请求但降级为 HTTP/1.1 转发到后端。HTTP/2 的伪头（:authority, :path）在降级为 HTTP/1.1 时可能产生歧义，导致请求走私。\r\n\r\n            ### 要求\r\n            统一协议栈 / 禁用 HTTP/1.1 降级。\r\n\r\n            ### 验收标准\r\n            - [ ] 端到端 HTTP/2 无需降级\r\n            - [ ] 若必须降级则清理伪头\r\n            - [ ] 验证 Content-Length 一致性"
+  },
+  {
+    "title": "[BUG] Hardcoded AWS Keys in Public Artifact → Cloud Takeover $180",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## 公开 Artifact 中的硬编码 AWS Key → 云环境接管\r\n\r\n            **难度**: Hard | **赏金**: $180\r\n\r\n            ### 漏洞描述\r\n            CI/CD 构建产物（Docker 镜像 / npm 包）中包含硬编码的 AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY。攻击者可利用这些凭证访问云资源。\r\n\r\n            ### 要求\r\n            使用临时凭证 + 密钥扫描 CI 门禁 + 环境变量替代硬编码。\r\n\r\n            ### 验收标准\r\n            - [ ] 使用 IAM Role / STS 临时凭证\r\n            - [ ] CI 中添加 secrets 扫描步骤\r\n            - [ ] 移除所有硬编码凭证"
+  },
+  {
+    "title": "[BUG] S3 Bucket Misconfiguration → Mass Data Leak $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## S3 Bucket 配置错误 → 批量数据泄露\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            S3 Bucket 策略设置为 \\"
+  },
+  {
+    "title": "[BUG] Regex DoS (ReDoS) via User-Controlled Pattern $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## Regex DoS (ReDoS) 用户控制的正则模式\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            搜索功能允许用户传入正则表达式：\\"
+  },
+  {
+    "title": "[BUG] Bluetooth Classic BR/EDR Pairing Bypass $180",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## Bluetooth Classic 配对绕过\r\n\r\n            **难度**: Hard | **赏金**: $180\r\n\r\n            ### 漏洞描述\r\n            蓝牙设备使用固定 PIN 码（0000）进行配对。攻击者在配对范围内可嗅探或暴力破解 PIN，建立加密连接后发送恶意 AT 指令。\r\n\r\n            ### 要求\r\n            使用 Secure Simple Pairing (SSP) + 随机 PIN + 加密连接。\r\n\r\n            ### 验收标准\r\n            - [ ] 启用 SSP (Secure Simple Pairing)\r\n            - [ ] 使用随机生成的临时 PIN\r\n            - [ ] 所有通信启用加密"
+  },
+  {
+    "title": "[BUG] TOTP Secret Leaked via QR Code in Logs $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## TOTP Secret 通过日志中的 QR Code 泄露\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            2FA 设置过程中生成的 QR Code（包含 \\"
+  },
+  {
+    "title": "[BUG] Clickjacking via X-Frame-Options Missing → Crypto Withdraw $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## Clickjacking → 加密货币提现\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            资产提现页面缺少 X-Frame-Options / CSP frame-ancestors，攻击者可构建透明 iframe 诱导用户点击确认提现按钮。\r\n\r\n            ### 要求\r\n            添加 X-Frame-Options: DENY + CSP frame-ancestors。\r\n\r\n            ### 验收标准\r\n            - [ ] 设置 X-Frame-Options: DENY\r\n            - [ ] 设置 Content-Security-Policy: frame-ancestors 'none'\r\n            - [ ] 关键操作需要二次确认"
+  },
+  {
+    "title": "[BUG] DNS Zone Transfer Enabled → Internal Network Mapping $150",
+    "diff": "hard",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "hard"
+    ],
+    "body": "## DNS Zone Transfer 开启 → 内网拓扑泄露\r\n\r\n            **难度**: Hard | **赏金**: $150\r\n\r\n            ### 漏洞描述\r\n            DNS 服务器允许来自任意 IP 的 AXFR（Zone Transfer）请求。攻击者可直接获取完整 DNS 记录，识别内部服务器 IP 和域名。\r\n\r\n            ### 要求\r\n            限制 AXFR 到受信 IP + TSIG 签名认证。\r\n\r\n            ### 验收标准\r\n            - [ ] AXFR 仅允许 slaves 服务器\r\n            - [ ] 启用 TSIG 签名\r\n            - [ ] 内部域名使用 split-horizon DNS"
+  },
+  {
+    "title": "[BUG] gRPC Reflection Enabled → Service Enumeration $120",
+    "diff": "easy",
+    "tags": [
+      "bug",
+      "bounty",
+      "security",
+      "easy"
+    ],
+    "body": "## gRPC Reflection 开启 → 服务枚举\r\n\r\n            **难度**: Easy | **赏金**: $120\r\n\r\n            ### 漏洞描述\r\n            gRPC 服务公开了 Reflection API（\\"
+  }
+]

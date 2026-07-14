@@ -1,14 +1,71 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="700" viewBox="0 0 600 700">
-  <rect width="100%" height="100%" fill="#0d1117"/>
-  <text x="20" y="40" fill="#58a6ff" font-size="24" font-weight="bold">🏆 AI Research Leaderboard</text>
-  <text x="20" y="65" fill="#8b949e" font-size="14">Token disclaimer: Virtual tokens, not redeemable for cash or crypto</text>
-  <line x1="20" y1="80" x2="580" y2="80" stroke="#30363d"/>
-  <text x="20" y="110" fill="#c9d1d9" font-size="14" font-weight="bold">Rank</text>
-  <text x="100" y="110" fill="#c9d1d9" font-size="14" font-weight="bold">Contributor</text>
-  <text x="300" y="110" fill="#c9d1d9" font-size="14" font-weight="bold">Bounty</text>
-  <text x="430" y="110" fill="#c9d1d9" font-size="14" font-weight="bold">Tasks</text>
-  <line x1="20" y1="120" x2="580" y2="120" stroke="#30363d"/>
-  <text x="20" y="150" fill="#c9d1d9">🥇@Rachaelisa$141043</text>\n<text x="20" y="180" fill="#c9d1d9">🥈@zydd123$6759</text>\n<text x="20" y="210" fill="#c9d1d9">🥉@yk578$57525</text>\n<text x="20" y="240" fill="#c9d1d9">#4@hero-infosec$52514</text>\n<text x="20" y="270" fill="#c9d1d9">#5@danielalanbates$51513</text>\n<text x="20" y="300" fill="#c9d1d9">#6@namdamdoi68-oss$3004</text>\n<text x="20" y="330" fill="#c9d1d9">#7@foxyManTou$22010</text>\n<text x="20" y="360" fill="#c9d1d9">#8@bambooshadow-studio$10514</text>\n<text x="20" y="390" fill="#c9d1d9">#9@Zubi-fix$1003</text>\n<text x="20" y="420" fill="#c9d1d9">#10@MRhuang1106$654</text>
-  <text x="20" y="680" fill="#484f58" font-size="11">Last updated: 2026-07-11 | Bot auto-generated</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="363" viewBox="0 0 800 363">
+<rect width="100%" height="100%" fill="#0d1117"/>
+<style>
+  text { font-family: "SF Mono","Segoe UI",monospace; fill: #c9d1d9; }
+  .title { font-size: 20px; font-weight: bold; fill: #58a6ff; }
+  .header { font-size: 13px; font-weight: bold; fill: #8b949e; }
+  .row { font-size: 13px; }
+  .score { fill: #7ee787; }
+  .line { stroke: #30363d; stroke-width: 1; }
+</style>
+<text x="30" y="30" class="title">🏆 AI Research Leaderboard</text>
+<text x="30" y="55" class="header">Updated: 2026-07-14</text>
+<line x1="20" y1="85" x2="780" y2="85" class="line"/>
+<text x="30" y="93" class="header">Rank</text>
+<text x="90" y="93" class="header">Participant</text>
+<text x="400" y="93" class="header">HONEY</text>
+<text x="500" y="93" class="header">Tasks</text>
+<text x="600" y="93" class="header">Streak</text>
+<line x1="20" y1="98" x2="780" y2="98" class="line"/>
+<text x="30" y="120" class="row">🥇</text>
+<text x="90" y="120" class="row">Rachaelisa</text>
+<text x="400" y="120" class="score">1410</text>
+<text x="500" y="120" class="row">43</text>
+<text x="600" y="120" class="row"> 0d</text>
+<text x="30" y="142" class="row">🥈</text>
+<text x="90" y="142" class="row">zydd123</text>
+<text x="400" y="142" class="score">675</text>
+<text x="500" y="142" class="row">0</text>
+<text x="600" y="142" class="row">🌱 2d</text>
+<text x="30" y="164" class="row">🥉</text>
+<text x="90" y="164" class="row">yk578</text>
+<text x="400" y="164" class="score">575</text>
+<text x="500" y="164" class="row">25</text>
+<text x="600" y="164" class="row"> 0d</text>
+<text x="30" y="186" class="row">#4</text>
+<text x="90" y="186" class="row">hero-infosec</text>
+<text x="400" y="186" class="score">525</text>
+<text x="500" y="186" class="row">14</text>
+<text x="600" y="186" class="row"> 0d</text>
+<text x="30" y="208" class="row">#5</text>
+<text x="90" y="208" class="row">danielalanbates</text>
+<text x="400" y="208" class="score">515</text>
+<text x="500" y="208" class="row">13</text>
+<text x="600" y="208" class="row">🌱 1d</text>
+<text x="30" y="230" class="row">#6</text>
+<text x="90" y="230" class="row">namdamdoi68-oss</text>
+<text x="400" y="230" class="score">300</text>
+<text x="500" y="230" class="row">4</text>
+<text x="600" y="230" class="row">🌱 1d</text>
+<text x="30" y="252" class="row">#7</text>
+<text x="90" y="252" class="row">foxyManTou</text>
+<text x="400" y="252" class="score">220</text>
+<text x="500" y="252" class="row">10</text>
+<text x="600" y="252" class="row"> 0d</text>
+<text x="30" y="274" class="row">#8</text>
+<text x="90" y="274" class="row">bambooshadow-stu</text>
+<text x="400" y="274" class="score">105</text>
+<text x="500" y="274" class="row">14</text>
+<text x="600" y="274" class="row"> 0d</text>
+<text x="30" y="296" class="row">#9</text>
+<text x="90" y="296" class="row">Zubi-fix</text>
+<text x="400" y="296" class="score">100</text>
+<text x="500" y="296" class="row">3</text>
+<text x="600" y="296" class="row"> 0d</text>
+<text x="30" y="318" class="row">#10</text>
+<text x="90" y="318" class="row">MRhuang1106</text>
+<text x="400" y="318" class="score">65</text>
+<text x="500" y="318" class="row">4</text>
+<text x="600" y="318" class="row"> 0d</text>
+<line x1="20" y1="330" x2="780" y2="330" class="line"/>
 </svg>

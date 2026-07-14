@@ -1,7 +1,7 @@
 name: Daily Notification Summary
 on:
   schedule:
-    - cron: "0 10 * * *"
+    - cron: "0 10 * * 0"   # 每周日
   workflow_dispatch:
 permissions:
   issues: write

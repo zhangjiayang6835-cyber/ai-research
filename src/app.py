@@ -1,10 +1,16 @@
-from flask import Flask, request, render_template_string, make_response, session
+from flask import Flask, request, render_template_string, make_response, session, jsonify
 import sqlite3
 import secrets
 import html
+from urllib.parse import parse_qs
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
 
 # Simulated user database
 users = {
@@ -51,6 +57,32 @@ def login():
             return resp
     
     return "Invalid credentials", 401
+@app.before_request
+def sanitize_query_params():
+    """Validate and deduplicate HTTP query parameters on every request.
+    
+    Prevents HTTP Parameter Pollution (HPP) attacks where an attacker sends
+    duplicate parameters (?admin=true&admin=false) to bypass security checks.
+    """
+    if not request.query_string:
+        return
+    
+    raw = request.query_string.decode('utf-8')
+    
+    # Reject requests with duplicate parameters outright
+    seen = set()
+    for pair in raw.split('&'):
+        if not pair:
+            continue
+        key = pair.split('=')[0]
+        if key in seen:
+            return jsonify({
+                'error': 'Duplicate parameter detected',
+                'message': 'HTTP Parameter Pollution attack detected'
+            }), 400
+        seen.add(key)
+
+
 @app.route('/search')
 def search():
     query = request.args.get('q', '')
