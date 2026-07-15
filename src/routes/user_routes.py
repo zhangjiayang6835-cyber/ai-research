@@ -1,56 +1,99 @@
-from dataclasses import dataclass, field
-from typing import Optional
+from __future__ import annotations
+
+import logging
+from typing import Any, Mapping
+
+from src.models.user import (
+    MassAssignmentError,
+    USER_ADMIN_POLICY,
+    USER_SELF_POLICY,
+    sanitize_payload,
+)
+
+logger = logging.getLogger("security.mass_assignment")
+
+# ---------------------------------------------------------------------------
+# Simulated request/auth context — replace with real framework objects
+# ---------------------------------------------------------------------------
+
+class Request:  # placeholder for Flask/FastAPI request
+    def get_json(self) -> dict:  # pragma: no cover
+        ...
 
 
-@dataclass
-class UserProfileUpdateDTO:
-    """
-    Data Transfer Object for user profile updates.
-    Explicitly defines which fields can be updated by the user.
-    """
-    username: Optional[str] = None
-    email: Optional[str] = None
-    display_name: Optional[str] = None
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
-    phone: Optional[str] = None
-    location: Optional[str] = None
-    website: Optional[str] = None
-    timezone: Optional[str] = None
-    language: Optional[str] = None
-    notification_preferences: Optional[dict] = None
-    
-    def to_filtered_dict(self) -> dict:
-        """Convert DTO to dict, excluding None values."""
-        return {k: v for k, v in self.__dict__.items() if v is not None}
+class AuthContext:  # placeholder for auth middleware
+    user_id: str
+    is_admin: bool
 
 
-@app.route('/api/user/profile', methods=['PUT'])
-@require_auth
-def update_profile(current_user):
-    """
-    Update user profile with whitelist-based parameter binding.
-    Uses DTO pattern to prevent mass assignment of sensitive fields.
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _jsonify(payload: dict) -> dict:  # pragma: no cover
+    return payload
+
+
+def _require_auth(request: Any) -> AuthContext:
+    """Stub — replace with real auth decorator / dependency injection."""
+    raise NotImplementedError("Wire up your real auth middleware here")
+
+
+# ---------------------------------------------------------------------------
+# Routes — hardened against mass-assignment
+# ---------------------------------------------------------------------------
+
+def update_profile(request: Any, current_user: Any) -> dict:
+    """PUT /api/user/profile — self-service profile update.
+
+    Uses the USER_SELF_POLICY allow-list. Privileged fields (role, is_admin,
+    etc.) are always rejected regardless of what the client sends.
     """
     raw_data = request.get_json()
-    
-    # Option 1: DTO-based filtering
-    dto = UserProfileUpdateDTO(
-        username=raw_data.get('username'),
-        email=raw_data.get('email'),
-        display_name=raw_data.get('display_name'),
-        bio=raw_data.get('bio'),
-        avatar_url=raw_data.get('avatar_url'),
-        phone=raw_data.get('phone'),
-        location=raw_data.get('location'),
-        website=raw_data.get('website'),
-        timezone=raw_data.get('timezone'),
-        language=raw_data.get('language'),
-        notification_preferences=raw_data.get('notification_preferences'),
+    if not isinstance(raw_data, dict):
+        return {"error": "Request body must be a JSON object"}
+
+    try:
+        clean = sanitize_payload(raw_data, USER_SELF_POLICY, actor_id=current_user.id)
+    except MassAssignmentError as exc:
+        logger.warning(
+            "profile_update_rejected user=%s offending=%s reason=%s",
+            current_user.id, exc.offending, str(exc),
+        )
+        return {"error": str(exc), "offending_fields": list(exc.offending)}
+
+    for key, value in clean.items():
+        setattr(current_user, key, value)
+    current_user.save()
+
+    return {"status": "ok", "updated_fields": list(clean.keys())}
+
+
+def admin_update_user(request: Any, target_user: Any, admin_user: Any) -> dict:
+    """PUT /api/admin/user/:id — admin-only update.
+
+    Uses USER_ADMIN_POLICY which permits privileged fields, but still
+    rejects immutable fields and unknown/suspicious keys.
+    """
+    raw_data = request.get_json()
+    if not isinstance(raw_data, dict):
+        return {"error": "Request body must be a JSON object"}
+
+    try:
+        clean = sanitize_payload(raw_data, USER_ADMIN_POLICY, actor_id=admin_user.id)
+    except MassAssignmentError as exc:
+        logger.warning(
+            "admin_update_rejected admin=%s target=%s offending=%s reason=%s",
+            admin_user.id, target_user.id, exc.offending, str(exc),
+        )
+        return {"error": str(exc), "offending_fields": list(exc.offending)}
+
+    for key, value in clean.items():
+        setattr(target_user, key, value)
+    target_user.save()
+
+    logger.info(
+        "admin_user_updated admin=%s target=%s fields=%s",
+        admin_user.id, target_user.id, list(clean.keys()),
     )
-    
-    # Only pass explicitly allowed fields to the model
-    filtered_data = dto.to_filtered_dict()
-    current_user.safe_update(filtered_data)
-    
-    return jsonify({'status': 'ok', 'updated_fields': list(filtered_data.keys())})
+    return {"status": "ok", "updated_fields": list(clean.keys())}
