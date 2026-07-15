@@ -32,14 +32,20 @@ app.jinja_env.globals['csrf_token'] = generate_csrf_token
 
 @app.route('/')
 def index():
-    return '''
-    <h1>AI Research Platform</h1>
-    <form action="/login" method="POST">
-        <input name="username" placeholder="Username">
-        <input name="password" type="password" placeholder="Password">
-        <button type="submit">Login</button>
-    </form>
-    <p><a href="/search?q=test">Search</a></p>
+    return """<!DOCTYPE html>
+    <html>
+    <head>
+        <title>AI Research Platform</title>
+    </head>
+    <body>
+        <h1>AI Research Platform</h1>
+        <form action="/login" method="POST">
+            <input name="username" placeholder="Username">
+            <input name="password" type="password" placeholder="Password">
+            <input type="submit" value="Login">
+        </form>
+    </body>
+    </html>"""
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -47,8 +53,8 @@ def login():
     username = request.form.get('username')
     password = request.form.get('password')
     
-        user = users[username]
-        if user['password'] == password:
+    user = users[username]
+    if user['password'] == password:
             resp = make_response(f"Welcome {username}!")
             # Use secure session instead of plain cookie
             session.clear()
@@ -88,18 +94,18 @@ def search():
     query = request.args.get('q', '')
     # Fix XSS: Escape user input before rendering
     safe_query = html.escape(query)
-    template = '''
-    <!DOCTYPE html>
+    html_template = f"""<!DOCTYPE html>
     <html>
-        <title>Search</title>
+    <head>
+        <title>Search Results</title>
     </head>
     <body>
-        <h1>Search Results for: ''' + safe_query + '''</h1>
-        <p>You searched for: ''' + safe_query + '''</p>
+        <h1>Search Results for: {safe_query}</h1>
+        <p>You searched for: {safe_query}</p>
     </body>
-    </html>
-    '''
-
+    </html>"""
+    
+    return html_template
 @app.route('/change_email', methods=['POST'])
 def change_email():
     # Fix CSRF: Validate CSRF token

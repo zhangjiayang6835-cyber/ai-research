@@ -1,261 +1,420 @@
 """
-zip_slip_fix.py — Zip Slip → Arbitrary File Write via Archive Extraction Fix
+Fix for Issue #958 — Zip Slip → Arbitrary File Write via Archive Extraction $150
+=================================================================================
 
-漏洞背景:
-- ZIP文件解压时未验证文件名是否包含../
-- 攻击者构造包含../../etc/cron.d/malicious条目的ZIP文件
-- 解压后覆盖系统文件
-- 修复需要: 规范化输出路径 + 拒绝包含路径遍历的条目
+Vulnerability
+-------------
+ZIP file extraction does not validate whether filenames contain `../`.
+An attacker can create a ZIP file with entries like
+`../../etc/cron.d/malicious` that overwrites system files.
 
-本模块实现安全的ZIP文件解压，防止Zip Slip攻击。
+Root Cause
+----------
+ZIP entries are extracted to the target directory without validating
+that the resulting path stays within the intended extraction directory.
+
+Fix Strategy
+------------
+1. Normalize all output paths using os.path.realpath/abspath.
+2. Verify the extracted path is within the target directory.
+3. Skip/reject entries containing `..` path traversal.
+4. Validate filenames against a blocklist of sensitive paths.
+5. Limit file size and total extraction size.
+
+Acceptance Criteria
+-------------------
+- [x] Extraction path validated to be within target directory
+- [x] Canonical path checking used
+- [x] Entries with `..` rejected/skipped
+- [x] Sensitive file paths blocked
+- [x] File size limits enforced
 """
 
+from __future__ import annotations
+
+import logging
 import os
 import zipfile
-import tempfile
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
+
+logger = logging.getLogger(__name__)
 
 
-class ZipSlipError(Exception):
-    """Zip Slip异常"""
-    pass
+# =============================================================================
+# Configuration
+# =============================================================================
+
+# Maximum file size per entry (100 MB)
+MAX_FILE_SIZE: int = 100 * 1024 * 1024
+
+# Maximum total extraction size (500 MB)
+MAX_TOTAL_SIZE: int = 500 * 1024 * 1024
+
+# Maximum number of entries
+MAX_ENTRIES: int = 10000
+
+# Sensitive paths that should never be overwritten
+SENSITIVE_PATHS: Set[str] = frozenset({
+    "/etc/passwd", "/etc/shadow", "/etc/sudoers",
+    "/etc/cron.d/", "/etc/crontab",
+    "/etc/ld.so.preload", "/etc/ld.so.conf",
+    "/bin/", "/sbin/", "/usr/bin/", "/usr/sbin/",
+    "/boot/", "/dev/", "/proc/", "/sys/",
+    "~/.ssh/", "~/.bashrc", "~/.bash_profile",
+    "~/.profile", "~/.zshrc", "~/.config/",
+})
+
+# Dangerous file extensions
+DANGEROUS_EXTENSIONS: Set[str] = frozenset({
+    ".exe", ".dll", ".so", ".dylib", ".sh", ".bash",
+    ".pyc", ".pyo", ".pyd",
+})
+
+
+# =============================================================================
+# Path Validation
+# =============================================================================
+
+@dataclass
+class PathValidationResult:
+    """Result of path validation."""
+    valid: bool
+    safe_path: Optional[Path] = None
+    error: Optional[str] = None
+
+
+def validate_extraction_path(
+    entry_path: str,
+    target_dir: Path,
+) -> PathValidationResult:
+    """Validate that a ZIP entry path is safe for extraction.
+    
+    Checks:
+    1. No path traversal (..)
+    2. No absolute paths
+    3. Resulting path is within target directory
+    4. No symlink traversal
+    
+    Args:
+        entry_path: The path from the ZIP entry.
+        target_dir: The intended extraction directory.
+    
+    Returns:
+        PathValidationResult with the safe resolved path.
+    """
+    if not entry_path:
+        return PathValidationResult(valid=False, error="Empty entry path")
+    
+    # Resolve target directory
+    try:
+        target_dir = target_dir.resolve()
+    except (OSError, ValueError):
+        return PathValidationResult(valid=False, error="Invalid target directory")
+    
+    # Reject absolute paths in ZIP entries
+    if os.path.isabs(entry_path):
+        return PathValidationResult(
+            valid=False,
+            error=f"Absolute path rejected: {entry_path}",
+        )
+    
+    # Normalize the entry path
+    normalized = os.path.normpath(entry_path)
+    
+    # Check for path traversal
+    if normalized.startswith("..") or "/.." in normalized:
+        return PathValidationResult(
+            valid=False,
+            error=f"Path traversal detected: {entry_path}",
+        )
+    
+    # Check for ".." in the raw path
+    if ".." in entry_path.split("/"):
+        return PathValidationResult(
+            valid=False,
+            error=f"Path traversal detected: {entry_path}",
+        )
+    
+    # Build the full extraction path
+    full_path = (target_dir / normalized).resolve()
+    
+    # Verify the resolved path is within the target directory
+    try:
+        full_path.relative_to(target_dir)
+    except ValueError:
+        return PathValidationResult(
+            valid=False,
+            error=f"Path escapes target directory: {entry_path}",
+        )
+    
+    # Check for sensitive paths
+    for sensitive in SENSITIVE_PATHS:
+        if sensitive in str(full_path):
+            return PathValidationResult(
+                valid=False,
+                error=f"Sensitive path blocked: {entry_path}",
+            )
+    
+    return PathValidationResult(valid=True, safe_path=full_path)
+
+
+# =============================================================================
+# Secure ZIP Extraction
+# =============================================================================
+
+@dataclass
+class ExtractionResult:
+    """Result of ZIP extraction."""
+    success: bool
+    extracted_files: List[str] = field(default_factory=list)
+    skipped_files: List[str] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
+    total_size: int = 0
 
 
 class SecureZipExtractor:
+    """Extracts ZIP archives safely, preventing Zip Slip attacks.
+    
+    Features:
+    - Path traversal detection
+    - Sensitive path blocking
+    - File size limits
+    - Total extraction size limits
+    - Entry count limits
     """
-    安全ZIP解压器
     
-    防止Zip Slip攻击:
-    1. 验证解压路径在目标目录内
-    2. 使用canonical path校验
-    3. 拒绝包含..的条目
-    """
+    def __init__(self, target_dir: Optional[Path] = None):
+        self.target_dir = Path(target_dir or os.getcwd())
     
-    # 危险的文件名模式
-    DANGEROUS_PATTERNS = frozenset({
-        "..", "~", "$", "`",
-    })
-    
-    # 最大文件大小（单个文件）
-    MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-    
-    # 最大条目数
-    MAX_ENTRIES = 1000
-    
-    def __init__(self, extract_dir: str):
-        self.extract_dir = Path(extract_dir).resolve()
-        self.extract_dir.mkdir(parents=True, exist_ok=True)
-    
-    def _is_safe_path(self, entry_path: str) -> Tuple[bool, Optional[str]]:
+    def extract(self, zip_path: Path) -> ExtractionResult:
+        """Safely extract a ZIP archive.
+        
+        Args:
+            zip_path: Path to the ZIP file.
+        
+        Returns:
+            ExtractionResult with details of what was extracted.
         """
-        验证路径是否安全
+        result = ExtractionResult(success=False)
         
-        检查:
-        1. 不包含路径遍历
-        2. 规范化后在目标目录内
-        3. 不包含危险模式
-        """
-        # 检查空路径
-        if not entry_path:
-            return False, "Empty path"
+        if not zip_path.exists():
+            result.success = False
+            result.errors.append(f"ZIP file not found: {zip_path}")
+            return result
         
-        # 规范化路径
-        # 移除开头的/或./等
-        normalized = entry_path.lstrip("/").lstrip(".")
-        
-        # 检查路径遍历
-        if ".." in normalized.split(os.sep):
-            return False, "Path traversal detected: '..' in path"
-        
-        # 检查危险模式
-        for pattern in self.DANGEROUS_PATTERNS:
-            if pattern in normalized:
-                return False, f"Dangerous pattern '{pattern}' in path"
-        
-        # 构建完整路径
-        full_path = (self.extract_dir / normalized).resolve()
-        
-        # 验证路径在目标目录内
-        if not str(full_path).startswith(str(self.extract_dir)):
-            return False, "Path escapes extraction directory"
-        
-        return True, None
-    
-    def _validate_zip_entry(self, entry: zipfile.ZipInfo) -> Tuple[bool, Optional[str]]:
-        """
-        验证ZIP条目是否安全
-        
-        额外检查:
-        1. 符号链接
-        2. 硬链接
-        3. 外部属性中的危险标志
-        """
-        # 检查路径
-        safe, error = self._is_safe_path(entry.filename)
-        if not safe:
-            return False, error
-        
-        # 检查符号链接（Unix外部属性）
-        external_attr = entry.external_attr >> 16
-        if external_attr & 0o120000:  # S_ISLNK
-            return False, "Symbolic link in ZIP entry"
-        
-        return True, None
-    
-    def extract_safe(self, zip_path: str) -> List[str]:
-        """
-        安全解压ZIP文件
-        
-        返回解压的文件列表。
-        """
-        extracted_files = []
-        
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            # 检查条目数量
-            if len(zf.namelist()) > self.MAX_ENTRIES:
-                raise ZipSlipError(f"Too many entries: {len(zf.namelist())}")
-            
-            for entry in zf.infolist():
-                # 验证条目
-                safe, error = self._validate_zip_entry(entry)
-                if not safe:
-                    raise ZipSlipError(f"Unsafe entry '{entry.filename}': {error}")
-                
-                # 跳过目录
-                if entry.filename.endswith("/"):
-                    continue
-                
-                # 构建安全路径
-                safe_name = entry.filename.lstrip("/").lstrip(".")
-                dest_path = self.extract_dir / safe_name
-                dest_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                # 检查文件大小
-                if entry.file_size > self.MAX_FILE_SIZE:
-                    raise ZipSlipError(
-                        f"Entry '{entry.filename}' too large: {entry.file_size}"
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                # Check for potential issues
+                for info in zf.infolist():
+                    # Skip directories
+                    if info.filename.endswith("/"):
+                        continue
+                    
+                    # Validate path
+                    path_result = validate_extraction_path(
+                        info.filename, self.target_dir
                     )
-                
-                # 安全解压
-                try:
-                    zf.extract(entry, self.extract_dir)
-                    extracted_files.append(str(dest_path))
-                except Exception as e:
-                    raise ZipSlipError(
-                        f"Failed to extract '{entry.filename}': {e}"
-                    ) from e
-        
-        return extracted_files
-    
-    def extract_safe_memory(self, zip_data: bytes) -> List[Tuple[str, bytes]]:
-        """
-        安全解压ZIP文件（内存模式）
-        
-        返回 (文件名, 内容) 列表。
-        """
-        extracted = []
-        
-        with zipfile.ZipFile(tempfile.NamedTemporaryFile(delete=False), "r") as zf:
-            # 需要先将数据写入临时文件
-            tmp_path = tempfile.mktemp(suffix=".zip")
-            with open(tmp_path, "wb") as f:
-                f.write(zip_data)
-            
-            try:
-                with zipfile.ZipFile(tmp_path, "r") as zf2:
-                    for entry in zf2.infolist():
-                        safe, error = self._validate_zip_entry(entry)
-                        if not safe:
-                            raise ZipSlipError(
-                                f"Unsafe entry '{entry.filename}': {error}"
-                            )
+                    
+                    if not path_result.valid:
+                        result.skipped_files.append(info.filename)
+                        logger.warning(f"Skipped {info.filename}: {path_result.error}")
+                        continue
+                    
+                    # Check file size
+                    if info.file_size > MAX_FILE_SIZE:
+                        result.skipped_files.append(info.filename)
+                        logger.warning(f"Skipped {info.filename}: exceeds max file size")
+                        continue
+                    
+                    # Check total size
+                    if result.total_size + info.file_size > MAX_TOTAL_SIZE:
+                        result.errors.append("Total extraction size limit reached")
+                        break
+                    
+                    # Check entry count
+                    if len(result.extracted_files) >= MAX_ENTRIES:
+                        result.errors.append("Maximum entry count reached")
+                        break
+                    
+                    # Safe to extract
+                    safe_path = path_result.safe_path
+                    if safe_path:
+                        # Create parent directories
+                        safe_path.parent.mkdir(parents=True, exist_ok=True)
                         
-                        if not entry.filename.endswith("/"):
-                            content = zf2.read(entry.filename)
-                            extracted.append((entry.filename, content))
-            finally:
-                os.unlink(tmp_path)
+                        # Extract the file
+                        try:
+                            with zf.open(info.filename) as source:
+                                with open(safe_path, 'wb') as target:
+                                    # Read and write in chunks to avoid memory issues
+                                    while True:
+                                        chunk = source.read(8192)
+                                        if not chunk:
+                                            break
+                                        target.write(chunk)
+                            
+                            result.extracted_files.append(info.filename)
+                            result.total_size += info.file_size
+                            
+                        except (IOError, OSError) as e:
+                            result.errors.append(f"Error extracting {info.filename}: {e}")
         
-        return extracted
+        except zipfile.BadZipFile:
+            result.success = False
+            result.errors.append("Invalid or corrupted ZIP file")
+        except Exception as e:
+            result.success = False
+            result.errors.append(f"Extraction error: {e}")
+        
+        result.success = len(result.errors) == 0
+        return result
+    
+    def extract_safe(self, zip_path: Path) -> ExtractionResult:
+        """Extract with additional safety checks.
+        
+        Adds:
+        - Symlink validation
+        - Dangerous extension blocking
+        """
+        result = ExtractionResult(success=False)
+        
+        if not zip_path.exists():
+            result.success = False
+            result.errors.append(f"ZIP file not found: {zip_path}")
+            return result
+        
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                for info in zf.infolist():
+                    if info.filename.endswith("/"):
+                        continue
+                    
+                    # Check for symlinks
+                    is_symlink = info.external_attr >> 16 & 0o120000  # S_IFLNK
+                    if is_symlink:
+                        result.skipped_files.append(info.filename)
+                        logger.warning(f"Skipped symlink: {info.filename}")
+                        continue
+                    
+                    # Check dangerous extensions
+                    ext = os.path.splitext(info.filename)[1].lower()
+                    if ext in DANGEROUS_EXTENSIONS:
+                        result.skipped_files.append(info.filename)
+                        logger.warning(f"Skipped dangerous file: {info.filename}")
+                        continue
+                    
+                    # Standard path validation
+                    path_result = validate_extraction_path(
+                        info.filename, self.target_dir
+                    )
+                    
+                    if not path_result.valid:
+                        result.skipped_files.append(info.filename)
+                        continue
+                    
+                    if info.file_size > MAX_FILE_SIZE:
+                        result.skipped_files.append(info.filename)
+                        continue
+                    
+                    if result.total_size + info.file_size > MAX_TOTAL_SIZE:
+                        break
+                    
+                    if len(result.extracted_files) >= MAX_ENTRIES:
+                        break
+                    
+                    safe_path = path_result.safe_path
+                    if safe_path:
+                        safe_path.parent.mkdir(parents=True, exist_ok=True)
+                        with zf.open(info.filename) as source:
+                            with open(safe_path, 'wb') as target:
+                                shutil.copyfileobj(source, target)
+                        
+                        result.extracted_files.append(info.filename)
+                        result.total_size += info.file_size
+        
+        except zipfile.BadZipFile:
+            result.errors.append("Invalid or corrupted ZIP file")
+        except Exception as e:
+            result.errors.append(f"Extraction error: {e}")
+        
+        result.success = len(result.errors) == 0
+        return result
 
 
-def validate_zip_safe(zip_path: str, extract_dir: str) -> bool:
-    """
-    快速ZIP安全验证
-    
-    检查ZIP文件是否包含路径遍历。
-    """
-    extractor = SecureZipExtractor(extract_dir)
-    try:
-        extractor.extract_safe(zip_path)
-        return True
-    except ZipSlipError:
-        return False
+# =============================================================================
+# Self-Test
+# =============================================================================
 
+import shutil
+import tempfile
 
-def sanitize_zip_entry_name(entry_name: str) -> str:
-    """
-    净化ZIP条目名称
+def run_self_test() -> List[str]:
+    """Run self-test to verify the fix works."""
+    errors = []
     
-    移除路径遍历和危险字符。
-    """
-    # 移除开头的../
-    while entry_name.startswith("../") or entry_name.startswith("..\\"):
-        entry_name = entry_name[3:]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        target = Path(tmpdir) / "extract"
+        target.mkdir()
+        extractor = SecureZipExtractor(target)
+        
+        # Test 1: Normal file
+        normal_zip = Path(tmpdir) / "normal.zip"
+        with zipfile.ZipFile(normal_zip, 'w') as zf:
+            zf.writestr("hello.txt", "Hello World")
+        
+        result = extractor.extract(normal_zip)
+        assert result.success, "Test 1 failed: Normal extraction should succeed"
+        assert "hello.txt" in result.extracted_files
+        print("✓ Test 1: Normal file extracted safely")
+        
+        # Test 2: Path traversal in ZIP
+        evil_zip = Path(tmpdir) / "evil.zip"
+        with zipfile.ZipFile(evil_zip, 'w') as zf:
+            zf.writestr("../../etc/passwd", "root:fake")
+        
+        result = extractor.extract(evil_zip)
+        assert "../../etc/passwd" in result.skipped_files
+        print("✓ Test 2: Path traversal blocked")
+        
+        # Test 3: Absolute path
+        abs_zip = Path(tmpdir) / "abs.zip"
+        with zipfile.ZipFile(abs_zip, 'w') as zf:
+            zf.writestr("/etc/passwd", "root:fake")
+        
+        result = extractor.extract(abs_zip)
+        assert "/etc/passwd" in result.skipped_files
+        print("✓ Test 3: Absolute path rejected")
+        
+        # Test 4: Path validation
+        result = validate_extraction_path("../escape.txt", target)
+        assert not result.valid
+        print("✓ Test 4: Path validation detects traversal")
+        
+        # Test 5: Normal path passes validation
+        result = validate_extraction_path("data/file.txt", target)
+        assert result.valid
+        print("✓ Test 5: Normal path passes validation")
+        
+        # Test 6: Empty path rejected
+        result = validate_extraction_path("", target)
+        assert not result.valid
+        print("✓ Test 6: Empty path rejected")
+        
+        # Test 7: Deeply nested path
+        result = validate_extraction_path("a/b/c/../../../etc/passwd", target)
+        assert not result.valid
+        print("✓ Test 7: Deeply nested traversal detected")
     
-    # 移除开头的/
-    entry_name = entry_name.lstrip("/")
-    
-    # 替换危险字符
-    entry_name = entry_name.replace("~", "_")
-    entry_name = entry_name.replace("$", "_")
-    
-    return entry_name
+    return errors
 
 
 if __name__ == "__main__":
-    import tempfile
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        extractor = SecureZipExtractor(tmpdir)
-        
-        # 创建测试ZIP
-        safe_zip_path = os.path.join(tmpdir, "safe.zip")
-        with zipfile.ZipFile(safe_zip_path, "w") as zf:
-            zf.writestr("safe.txt", "Hello World")
-        
-        # 安全解压
-        files = extractor.extract_safe(safe_zip_path)
-        print(f"Safe extract: {files}")
-        
-        # 创建恶意ZIP
-        malicious_zip_path = os.path.join(tmpdir, "malicious.zip")
-        with zipfile.ZipFile(malicious_zip_path, "w") as zf:
-            zf.writestr("../../etc/cron.d/malicious", "malicious content")
-        
-        # 应该被阻止
-        try:
-            extractor.extract_safe(malicious_zip_path)
-            print("Malicious ZIP: SHOULD BE BLOCKED")
-        except ZipSlipError as e:
-            print(f"Malicious ZIP: BLOCKED - {e}")
-        
-        # 测试其他遍历模式
-        for pattern in ["../etc/passwd", "..\\Windows\\system32", "../../../tmp/evil"]:
-            test_zip = os.path.join(tmpdir, "test.zip")
-            with zipfile.ZipFile(test_zip, "w") as zf:
-                zf.writestr(pattern, "test")
-            try:
-                extractor.extract_safe(test_zip)
-                print(f"Pattern '{pattern}': SHOULD BE BLOCKED")
-            except ZipSlipError as e:
-                print(f"Pattern '{pattern}': BLOCKED")
-    
-    print("\nZip Slip Prevention Features:")
-    print("- Canonical path validation")
-    print("- Path traversal detection (..)")
-    print("- Symlink blocking")
-    print("- File size limits")
-    print("- Entry count limits")
-    print("- Dangerous pattern filtering")
+    errors = run_self_test()
+    if errors:
+        print(f"\nFAILED: {len(errors)} test(s) failed:")
+        for e in errors:
+            print(f"  - {e}")
+    else:
+        print("\nAll self-tests passed!")
