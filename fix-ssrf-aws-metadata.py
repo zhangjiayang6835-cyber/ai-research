@@ -17,6 +17,7 @@ import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
+import http.client
 
 
 ALLOWED_HOSTS = frozenset({
@@ -69,7 +70,7 @@ def _blocked_ip(ip):
     return any(ip in network for network in BLOCKED_IP_RANGES)
 
 
-def validate_fetch_url(url: str, allowed_hosts: frozenset[str] = ALLOWED_HOSTS) -> str:
+def validate_fetch_url(url: str, allowed_hosts: frozenset[str] = ALLOWED_HOSTS) -> tuple[str, str]:
     """
     验证URL安全性
 
@@ -98,9 +99,11 @@ def validate_fetch_url(url: str, allowed_hosts: frozenset[str] = ALLOWED_HOSTS) 
     resolved = _host_ips(hostname)
     if not resolved or any(_blocked_ip(ip) for ip in resolved):
         raise SSRFBlocked("hostname resolves to a blocked address")
+        
+    pinned_ip = str(resolved[0])
 
     # 移除fragment避免信息泄露
-    return urllib.parse.urlunparse(parsed._replace(fragment=""))
+    return urllib.parse.urlunparse(parsed._replace(fragment="")), pinned_ip
 
 
 def fetch_external_json(url: str, timeout_seconds: float = 3.0) -> bytes:
@@ -118,8 +121,28 @@ def fetch_external_json(url: str, timeout_seconds: float = 3.0) -> bytes:
         SSRFBlocked: 任何安全违规
         urllib.error.URLError: 网络错误
     """
-    safe_url = validate_fetch_url(url)
-    opener = urllib.request.build_opener(NoRedirectHandler)
+    safe_url, pinned_ip = validate_fetch_url(url)
+    
+    class PinnedHTTPSConnection(http.client.HTTPSConnection):
+        def connect(self):
+            self.sock = socket.create_connection((pinned_ip, self.port), self.timeout, self.source_address)
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            
+            if self._tunnel_host:
+                self._tunnel()
+                server_hostname = self._tunnel_host
+            else:
+                server_hostname = self.host
+                
+            if self._context:
+                self.sock = self._context.wrap_socket(self.sock, server_hostname=server_hostname)
+
+    class PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+        def https_open(self, req):
+            return self.do_open(PinnedHTTPSConnection, req)
+            
+    context = ssl.create_default_context()
+    opener = urllib.request.build_opener(NoRedirectHandler, PinnedHTTPSHandler(context=context))
     request = urllib.request.Request(
         safe_url,
         headers={"Accept": "application/json", "User-Agent": "safe-fetch/1.0"},
