@@ -196,7 +196,7 @@
     ]
   },
   "voladoradepapantla-netizen": {
-    "total": 150,
+    "total": 225,
     "submissions": [
       {
         "issue": 1209,
@@ -213,6 +213,14 @@
         "clean": true,
         "difficulty": "medium",
         "date": "2026-07-16T02:42:08.515Z"
+      },
+      {
+        "issue": 1242,
+        "targetIssue": "1219",
+        "score": 75,
+        "clean": true,
+        "difficulty": "medium",
+        "date": "2026-07-16T23:11:50.432Z"
       }
     ]
   }
