@@ -20,13 +20,16 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 
-def safe_login_query(username: str, password: str) -> Dict[str, Any]:
+import hashlib
+
+def safe_login_query(username: str, password: str, salt: str = "") -> Dict[str, Any]:
     """
     Build a safe MongoDB login query.
     
     Args:
         username: User-supplied username.
         password: User-supplied password.
+        salt: Optional salt for password hashing.
     
     Returns:
         Safe query dict for MongoDB authentication.
@@ -39,8 +42,11 @@ def safe_login_query(username: str, password: str) -> Dict[str, Any]:
     if "$" in username or "$" in password:
         return {}
     
+    # Hash password with salt
+    hashed_password = hashlib.sha256((password + salt).encode()).hexdigest()
+    
     # Exact match only - no operators
     return {
         "username": username,
-        "password": password
+        "password": hashed_password
     }
