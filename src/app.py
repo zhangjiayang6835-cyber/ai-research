@@ -39,23 +39,33 @@ def index():
         <button type="submit">Login</button>
     </form>
     <p><a href="/search?q=test">Search</a></p>
+    '''
 
 @app.route('/login', methods=['POST'])
 def login():
     # Regenerate session on login to prevent session fixation
     username = request.form.get('username')
-    password = request.form.get('password')
+    password = request.form.get('password') or ""
     
-        user = users[username]
-        if user['password'] == password:
-            resp = make_response(f"Welcome {username}!")
-            # Use secure session instead of plain cookie
-            session.clear()
-            session['username'] = username
-            session['role'] = user['role']
-            return resp
+    # Timing attack prevention: compare dummy hash if user not found
+    dummy_password = "dummy_password_for_timing_attack_prevention"
+    user = users.get(username)
+    
+    actual_password = user['password'] if user else dummy_password
+    
+    import hmac
+    is_valid = hmac.compare_digest(actual_password.encode(), password.encode())
+    
+    if user and is_valid:
+        resp = make_response(f"Welcome {username}!")
+        # Use secure session instead of plain cookie
+        session.clear()
+        session['username'] = username
+        session['role'] = user['role']
+        return resp
     
     return "Invalid credentials", 401
+
 @app.route('/search')
 def search():
     query = request.args.get('q', '')
@@ -72,6 +82,7 @@ def search():
     </body>
     </html>
     '''
+    return template
 
 @app.route('/change_email', methods=['POST'])
 def change_email():
