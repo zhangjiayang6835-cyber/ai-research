@@ -10,6 +10,7 @@ app.secret_key = secrets.token_hex(32)
 @app.after_request
 def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'none'"
     return response
 
 # Simulated user database
