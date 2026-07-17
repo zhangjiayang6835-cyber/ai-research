@@ -1,18 +1,16 @@
 import os
 import fcntl
 import tempfile
+import secrets
 from pathlib import Path
 
-
-    Returns:
-        Path to the saved file
+def atomic_write(data: bytes, destination: str) -> str:
+    """
+    Atomically write data to a file using a temporary file and rename.
     """
     dest = Path(destination).resolve()
     dest.parent.mkdir(parents=True, exist_ok=True)
     
-    # Atomic file write to prevent race conditions
-    # Other processes will see either the old file or the complete new file,
-    # never a partially written file
     temp_fd = None
     temp_path = None
     try:
@@ -24,16 +22,32 @@ from pathlib import Path
         with os.fdopen(temp_fd, 'wb') as f:
             f.write(data)
             f.flush()
-            # Ensure data is written to disk before rename
             os.fsync(f.fileno())
         
-        # Atomic replace - on POSIX this is atomic
         os.replace(temp_path, dest)
         
     except Exception:
-        # Clean up temp file on failure
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
         raise
     
     return str(dest)
+
+
+def generate_oauth_state() -> str:
+    """
+    Generate cryptographically secure OAuth state parameter.
+    Fixes predictable OAuth state token vulnerability.
+    Uses secrets.token_urlsafe() for cryptographically secure random bytes.
+    """
+    return secrets.token_urlsafe(32)
+
+
+def validate_oauth_state(state: str, session_state: str) -> bool:
+    """
+    Validate OAuth state using constant-time comparison.
+    Uses hmac.compare_digest / secrets.compare_digest to prevent timing attacks.
+    """
+    if not state or not session_state:
+        return False
+    return secrets.compare_digest(state, session_state)
