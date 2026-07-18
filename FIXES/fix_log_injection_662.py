@@ -199,6 +199,7 @@ class SecureJSONLogger:
     def log_access(self, remote_addr: str, method: str, path: str,
                    status: int, user_agent: str = "", username: str = "") -> Optional[str]:
         """Build a structured access-log entry."""
+        sanitized_user_agent = LogSanitizer.sanitize(user_agent, self.config)
         return self.log(
             "INFO",
             f"{method} {path} {status}",
@@ -206,7 +207,7 @@ class SecureJSONLogger:
             method=method,
             path=path,
             status=status,
-            user_agent=user_agent,
+            user_agent=sanitized_user_agent,
             username=username,
         )
 
