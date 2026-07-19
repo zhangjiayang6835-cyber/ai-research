@@ -1,0 +1,45 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install truffleHog
+      run: |
+        pip install trufflehog
+
+    - name: Scan for Secrets
+      run: |
+        trufflehog --regex --entropy=False. || true
+
+    - name: Assume IAM Role and Get Temporary Credentials
+      run: |
+        chmod +x./assume_role.sh
+       ./assume_role.sh
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    - name: Build and Push Docker Image
+      run: |
+        docker build -t my-app .
+        docker tag my-app:latest my-ecr-repo/my-app:latest
+        aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin my-ecr-repo
+        docker push my-ecr-repo/my-app:latest
