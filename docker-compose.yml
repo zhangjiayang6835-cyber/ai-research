@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  myapp:
+    build: .
+    container_name: secure_container
+    ports:
+      - "8080:8080"
+    # Run as a non-root user
+    user: "1000"
+    # Drop all capabilities and add only what is necessary
+    cap_drop:
+      - ALL
+    cap_add:
+      - CAP_NET_BIND_SERVICE
+    # Use a Seccomp profile
+    security_opt:
+      - seccomp:unconfined
+    # Use user namespaces
+    userns_mode: host
