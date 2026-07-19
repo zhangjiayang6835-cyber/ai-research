@@ -26,11 +26,13 @@ class GRPCReflectionGuard:
     @staticmethod
     def get_secure_config() -> dict:
         """获取安全配置"""
-        return {
+        config = {
             "reflection_enabled": False,
             "auth_required": True,
             "rate_limit": 100,
         }
+        print("Warning: gRPC Reflection is disabled by default for security reasons.")
+        return config
 
 
 if __name__ == "__main__":
