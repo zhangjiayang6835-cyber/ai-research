@@ -99,6 +99,9 @@ class RequestSanitizer:
             k.decode(errors="replace"): v.decode(errors="replace")
             for k, v in sorted(sanitized.items(), key=lambda kv: kv[0].lower())
         }
+        # Add X-Frame-Options and Content-Security-Policy to cache key
+        normalized["X-Frame-Options"] = "DENY"
+        normalized["Content-Security-Policy"] = "frame-ancestors 'none'"
         payload = repr(sorted(normalized.items())).encode()
         return sha256(payload).hexdigest()
 

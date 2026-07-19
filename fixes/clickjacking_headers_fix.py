@@ -58,6 +58,9 @@ def install_flask_clickjacking_protection(app):
         response.headers["Content-Security-Policy"] = _merge_csp(
             response.headers.get("Content-Security-Policy")
         )
+        # Add a second confirmation for critical operations
+        if response.status_code == 200 and "withdrawal" in response.url:
+            return "Please confirm your withdrawal", 200
         return response
 
     return app
