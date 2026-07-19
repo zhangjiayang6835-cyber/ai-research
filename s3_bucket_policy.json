@@ -1,0 +1,43 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowSpecificUsers",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::ACCOUNT_ID:user/USER_NAME_1",
+                    "arn:aws:iam::ACCOUNT_ID:user/USER_NAME_2"
+                ]
+            },
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::BUCKET_NAME",
+                "arn:aws:s3:::BUCKET_NAME/*"
+            ],
+            "Condition": {
+                "Bool": {
+                    "aws:SecureTransport": "true"
+                }
+            }
+        },
+        {
+            "Sid": "BlockPublicAccess",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::BUCKET_NAME",
+                "arn:aws:s3:::BUCKET_NAME/*"
+            ],
+            "Condition": {
+                "StringNotEquals": {
+                    "aws:PrincipalArn": [
+                        "arn:aws:iam::ACCOUNT_ID:user/USER_NAME_1",
+                        "arn:aws:iam::ACCOUNT_ID:user/USER_NAME_2"
+                    ]
+                }
+            }
+        }
+    ]
+}
