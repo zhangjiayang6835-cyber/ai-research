@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::123456789012:role/SpecificRole1",
+        "arn:aws:iam::123456789012:role/SpecificRole2"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": [
+            "ec2.amazonaws.com",
+            "lambda.amazonaws.com"
+          ]
+        }
+      }
+    }
+  ]
+}
