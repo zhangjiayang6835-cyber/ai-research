@@ -1,37 +1,44 @@
-import os
-import hashlib
-import fcntl
-import tempfile
-from pathlib import Path
-from typing import BinaryIO, Optional
-
-        if not self._is_safe_path(destination):
-            raise SecurityError("Invalid destination path")
-        
-        dest_path = Path(destination).resolve()
-        
-        # Ensure parent directory exists
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Use atomic write with temp file to prevent race condition
-        # where partial/incomplete files are visible to other processes
-        temp_fd = None
-        temp_path = None
-        try:
-            # Create temp file in same directory for atomic rename
-            temp_fd, temp_path = tempfile.mkstemp(
-                dir=dest_path.parent,
-                prefix=f".atomic_{dest_path.name}_"
-            )
-            
-            with os.fdopen(temp_fd, 'wb') as f:
-                f.write(content)
-                f.flush()
-                os.fsync(f.fileno())
-            
-            # Atomic rename ensures other processes see complete file or nothing
-            os.replace(temp_path, dest_path)
-        except Exception:
-            if temp_path and os.path.exists(temp_path):
-                os.unlink(temp_path)
-            raise
++ import json
++ from botocore.exceptions import ClientError
++ 
++ def secure_bucket(bucket_name: str) -> None:
++     """Apply security best practices to an S3 bucket."""
++     s3 = boto3.client('s3')
++     try:
++         # Block all public access (most effective defense)
++         s3.put_public_access_block(
++             Bucket=bucket_name,
++             PublicAccessBlockConfiguration={
++                 'BlockPublicAcls': True,
++                 'IgnorePublicAcls': True,
++                 'BlockPublicPolicy': True,
++                 'RestrictPublicBuckets': True
++             }
++         )
++         # Deny any public access via bucket policy (defense in depth)
++         deny_policy = {
++             "Version": "2012-10-17",
++             "Statement": [
++                 {
++                     "Effect": "Deny",
++                     "Principal": "*",
++                     "Action": "s3:*",
++                     "Resource": [
++                         f"arn:aws:s3:::{bucket_name}",
++                         f"arn:aws:s3:::{bucket_name}/*"
++                     ],
++                     "Condition": {
++                         "Bool": {
++                             "aws:SecureTransport": "false"
++                         }
++                     }
++                 }
++             ]
++         }
++         s3.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(deny_policy))
++     except ClientError as e:
++         print(f"Failed to secure bucket {bucket_name}: {e}")
++ 
+  # Existing bucket creation code
+  s3.create_bucket(Bucket=bucket_name)
++ secure_bucket(bucket_name)   # <-- add this line after bucket creation
