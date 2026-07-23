@@ -10,6 +10,10 @@ app.secret_key = secrets.token_hex(32)
 @app.after_request
 def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
+    # Prevent web cache deception: disallow caching of session-bearing responses
+    response.headers['Cache-Control'] = 'private, no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
     return response
 
 # Simulated user database
