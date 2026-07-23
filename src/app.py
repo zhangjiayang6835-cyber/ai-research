@@ -4,12 +4,24 @@ import secrets
 import html
 from urllib.parse import parse_qs
 
+from src.security.request_sanitizer import RequestSanitizer
+
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
+
+_sanitizer = RequestSanitizer()
 
 @app.after_request
 def add_security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
+    # Prevent web cache poisoning: include response-affecting headers in Vary
+    vary_headers = response.headers.get('Vary', '')
+    required = {'X-Forwarded-Host', 'X-Forwarded-Proto', 'Origin'}
+    existing = set(h.strip() for h in vary_headers.split(',') if h.strip())
+    missing = required - existing
+    if missing:
+        combined = ','.join(existing | required)
+        response.headers['Vary'] = combined
     return response
 
 # Simulated user database
