@@ -2,6 +2,7 @@ from flask import Flask, request, render_template_string, make_response, session
 import sqlite3
 import secrets
 import html
+import hmac
 from urllib.parse import parse_qs
 
 app = Flask(__name__)
@@ -48,7 +49,7 @@ def login():
     password = request.form.get('password')
     
         user = users[username]
-        if user['password'] == password:
+        if hmac.compare_digest(user['password'], password):
             resp = make_response(f"Welcome {username}!")
             # Use secure session instead of plain cookie
             session.clear()
