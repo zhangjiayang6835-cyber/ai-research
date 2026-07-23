@@ -9,7 +9,7 @@
   .line { stroke: #30363d; stroke-width: 1; }
 </style>
 <text x="30" y="30" class="title">🏆 AI Research Leaderboard</text>
-<text x="30" y="55" class="header">Updated: 2026-07-22</text>
+<text x="30" y="55" class="header">Updated: 2026-07-23</text>
 <line x1="20" y1="85" x2="780" y2="85" class="line"/>
 <text x="30" y="93" class="header">Rank</text>
 <text x="90" y="93" class="header">Participant</text>
