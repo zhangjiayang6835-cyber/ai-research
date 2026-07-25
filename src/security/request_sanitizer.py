@@ -21,6 +21,18 @@ class RequestSanitizer:
         b"transfer-encoding", b"upgrade",
     }
 
+    # Headers that affect the response but may not be part of cache key
+    # (unkeyed headers — must be included to prevent cache poisoning)
+    RESPONSE_AFFECTING_HEADERS = frozenset({
+        "accept", "accept-encoding", "accept-language",
+        "authorization", "cookie", "host",
+        "x-forwarded-host", "x-forwarded-proto",
+        "x-forwarded-for", "x-real-ip",
+        "user-agent", "origin", "referer",
+        "content-type", "cache-control",
+        "x-forwarded-scheme", "x-original-host",
+    })
+
     @staticmethod
     def _has_control_bytes(value: bytes) -> bool:
         return any(token in value for token in (b"\r", b"\n", b"\x00"))
@@ -93,12 +105,16 @@ class RequestSanitizer:
 
         Strips hop-by-hop headers (RFC 7230 §6.1) and normalizes
         key ordering to prevent cache poisoning via header manipulation.
+
+        Includes all response-affecting headers (including unkeyed ones
+        like X-Forwarded-Host) to prevent web cache poisoning.
         """
         sanitized = self.sanitize_headers(headers)
-        normalized = {
-            k.decode(errors="replace"): v.decode(errors="replace")
-            for k, v in sorted(sanitized.items(), key=lambda kv: kv[0].lower())
-        }
+        normalized = {}
+        for k, v in sorted(sanitized.items(), key=lambda kv: kv[0].lower()):
+            key = k.decode(errors="replace").lower()
+            if key in self.RESPONSE_AFFECTING_HEADERS:
+                normalized[key] = v.decode(errors="replace")
         payload = repr(sorted(normalized.items())).encode()
         return sha256(payload).hexdigest()
 
