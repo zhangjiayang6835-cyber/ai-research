@@ -4,7 +4,7 @@
 ![Bounty](https://img.shields.io/badge/bounty-$4770-gold)
 ![Submissions](https://img.shields.io/badge/submissions-145-orange)
 ![Stars](https://img.shields.io/github/stars/zhangjiayang6835-cyber/ai-research)
-![Last Updated](https://img.shields.io/badge/updated-2026-07-31-lightgrey)
+![Last Updated](https://img.shields.io/badge/updated-2026-08-01-lightgrey)
 <!-- STATS_BADGES_END -->
 
 <div align="center">
