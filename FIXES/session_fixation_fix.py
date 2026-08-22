@@ -129,35 +129,44 @@ class SessionFixationProtection:
         if not old_session:
             return None
 
-        return self.create_session(
+        new_session_id, new_session_data = self.create_session(
             old_session["user_id"],
             old_session.get("ip_address"),
             old_session.get("user_agent"),
         )
+        new_session_data["data"] = old_session.get("data", {})
+        self._sessions[new_session_id] = new_session_data
+        return new_session_id, new_session_data
 
     def get_session(
         self, session_id: str,
         ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        user_agent: Optional[str] = None,
+        url: Optional[str] = None
     ) -> Optional[dict]:
         """
         Retrieve a session with validation checks.
 
         Validates:
-        1. Session exists
-        2. Session has not expired (absolute TTL)
-        3. Session has not timed out (idle timeout)
-        4. IP address matches (if IP binding is enabled)
-        5. User-Agent matches (if UA binding is enabled)
+        1. URL does not contain a session ID (reject URL-based session IDs)
+        2. Session exists
+        3. Session has not expired (absolute TTL)
+        4. Session has not timed out (idle timeout)
+        5. IP address matches (if IP binding is enabled)
+        6. User-Agent matches (if UA binding is enabled)
 
         Args:
             session_id: The session ID to look up.
             ip_address: The client's IP address for validation.
             user_agent: The client's User-Agent for validation.
+            url: Optional request URL to check for session ID parameter leakage.
 
         Returns:
             Session data dict or None if invalid/expired.
         """
+        if url and self.is_url_session_id(url):
+            return None
+
         session = self._sessions.get(session_id)
         if not session:
             return None
