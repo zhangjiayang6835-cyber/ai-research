@@ -125,3 +125,5 @@ if __name__ == '__main__':
     try:
         main()
     except PermissionError:
+        print("[-] Permission denied. Please run as root.", file=sys.stderr)
+        sys.exit(1)
