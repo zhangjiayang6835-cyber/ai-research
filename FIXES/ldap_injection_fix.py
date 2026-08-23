@@ -323,11 +323,11 @@ class SecureLDAPAuthService:
         Returns:
             LDAPAuthResult with success/failure.
         """
-        # Reject empty bind
-        if not username or not password:
+        # Reject empty bind (prevent anonymous bind bypass)
+        if not username or not username.strip() or not password or not password.strip():
             return LDAPAuthResult(
                 success=False,
-                error="Username and password required",
+                error="Username and password required (anonymous bind not allowed)",
             )
         
         # Build secure filter
@@ -397,6 +397,12 @@ def run_self_test() -> List[str]:
     result = builder.build_search_filter("userPassword", "secret")
     assert not result.success
     print("✓ Test 8: Disallowed attribute rejected")
+
+    # Test 9: Anonymous bind / empty bind rejection in service
+    auth_service = SecureLDAPAuthService()
+    auth_res = auth_service.authenticate("", "")
+    assert not auth_res.success
+    print("✓ Test 9: Anonymous/empty bind rejected")
     
     return errors
 
