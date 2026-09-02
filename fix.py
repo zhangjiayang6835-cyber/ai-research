@@ -1,10 +1,15 @@
-"""Submission entrypoint for issue #95: Buffer Overflow in Native Module."""
+"""Submission entrypoint for issue #1475: ECB Mode Encryption → Data Leak."""
 
-from fixes.native_buffer_overflow_fix import copy_to_fixed_buffer, validate_native_buffer
+from fixes.ecb_mode_encryption_fix import EncryptedUserData, UserDataEncryptor
 
 
-__all__ = ["copy_to_fixed_buffer", "validate_native_buffer"]
+__all__ = ["EncryptedUserData", "UserDataEncryptor"]
 
 
 if __name__ == "__main__":
-    print("fix #95: native buffer inputs are length-checked before fixed-buffer copies")
+    enc = UserDataEncryptor()
+    admin = enc.encrypt("admin")
+    again = enc.encrypt("admin")
+    assert admin.blob != again.blob
+    assert enc.decrypt(admin) == "admin"
+    print("fix #1475: user data encrypted with AES-256-GCM (random nonce, AEAD)")

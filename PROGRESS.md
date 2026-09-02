@@ -1,33 +1,30 @@
 # PROGRESS.md — ai-research
 
-> 墨子 Harness · Bounty #95
+> 墨子 Harness · Bounty #1475
 
 ---
 
 ## ✅ 已完成
 
-- 筛选并锁定 bounty issue: https://github.com/zhangjiayang6835-cyber/ai-research/issues/95
-- 基于 `upstream/master` 创建独立 worktree 和分支 `fix/buffer-overflow-native-95`
-- 初始化 Harness，定制 AGENTS.md / PROGRESS.md / setup.sh
-- 补齐四条命令：`pnpm type-check` / `pnpm test` / `pnpm lint` / `pnpm build`
-- 新增 `fixes/native_buffer_overflow_fix.py`：在 native 边界执行编码后字节长度校验、NUL 字节拒绝、固定缓冲区安全拷贝
-- 新增回归测试覆盖超长 payload、多字节 UTF-8、NUL 字节、固定缓冲区不截断和安全填充
-- Ralph 循环四条命令已全绿：type-check / test / lint / build
+- 锁定 bounty issue: https://github.com/zhangjiayang6835-cyber/ai-research/issues/1475
+- 新增 `fixes/ecb_mode_encryption_fix.py`：`UserDataEncryptor` 使用 AES-256-GCM（AEAD），每次加密随机 12-byte nonce
+- 新增 `tests/test_ecb_mode_encryption_fix.py`：往返解密、同明文不同密文、nonce 随机性、篡改/上下文绑定拒绝、无 ECB 模式
+- 更新 Harness 入口 `fix.py` 与 `package.json` 四条命令
 
 ---
 
 ## 🔄 进行中
 
-- PR 已创建: https://github.com/zhangjiayang6835-cyber/ai-research/pull/331
+- Iteration 1/10 — 本地验证四条 Harness 命令
 
 ---
 
 ## 📋 待办
 
-- 等待维护者 review / merge
+- QA 审查后由 reviewer 接手；未 push / 未开 PR（按 ticket 要求）
 
 ---
 
 ## ⚠️ 已知问题
 
-- 无
+- 仓库内无原始 ECB 漏洞源码；修复为独立安全模块 + 测试，符合 issue 验收标准
