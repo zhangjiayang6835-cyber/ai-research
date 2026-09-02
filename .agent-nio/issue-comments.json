@@ -1,0 +1,81 @@
+{
+  "issue": {
+    "repo": "zhangjiayang6835-cyber/ai-research",
+    "number": 1503,
+    "url": "https://github.com/zhangjiayang6835-cyber/ai-research/issues/1503",
+    "title": "[BUG] Race Condition in /tmp File Handling (TOCTOU) $150"
+  },
+  "analysis": {
+    "total": 5,
+    "attempt_count": 0,
+    "attempt_users": [],
+    "settled_mentions": 0,
+    "maintainer_feedback_count": 0,
+    "missed_gap_mentions": 0,
+    "latest_attempt": null,
+    "latest_maintainer_feedback": null,
+    "latest_gap_hint": null
+  },
+  "comments": [
+    {
+      "id": 5111979281,
+      "user": "ivegotahunnitonit",
+      "created_at": "2026-07-29T02:10:06Z",
+      "updated_at": "2026-07-29T02:10:06Z",
+      "body": "/claim",
+      "url": "https://github.com/zhangjiayang6835-cyber/ai-research/issues/1503#issuecomment-5111979281",
+      "is_attempt": false,
+      "is_settled": false,
+      "is_maintainer_feedback": false,
+      "is_missed_gap": false
+    },
+    {
+      "id": 5111981340,
+      "user": "github-actions[bot]",
+      "created_at": "2026-07-29T02:10:21Z",
+      "updated_at": "2026-07-29T02:10:21Z",
+      "body": "\u2705 @ivegotahunnitonit \u5df2\u6210\u529f\u8ba4\u9886 Issue #1503\uff01\n\n\ud83d\udcc5 \u622a\u6b62\u65e5\u671f: **2026-08-05**\uff087 \u5929\u5185\uff09\n\ud83d\udcee \u8bf7\u5728\u6b64 Issue \u4e0b\u63d0\u4ea4\u4fee\u590d\u4ee3\u7801\u6216\u521b\u5efa PR\u3002\n\n> \ud83d\udca1 \u865a\u62df\u4ee3\u5e01\u4ec5\u4f9b\u5b66\u4e60\u6392\u540d\u4f7f\u7528\uff0c\u4e0d\u53ef\u5151\u6362\u4e3a\u73b0\u91d1\u6216\u52a0\u5bc6\u8d27\u5e01\u3002\u795d\u4f60\u597d\u8fd0\uff01\ud83d\ude80",
+      "url": "https://github.com/zhangjiayang6835-cyber/ai-research/issues/1503#issuecomment-5111981340",
+      "is_attempt": false,
+      "is_settled": false,
+      "is_maintainer_feedback": false,
+      "is_missed_gap": false
+    },
+    {
+      "id": 5111997092,
+      "user": "ivegotahunnitonit",
+      "created_at": "2026-07-29T02:12:14Z",
+      "updated_at": "2026-07-29T02:12:14Z",
+      "body": "## Fix: Secure Temporary File Handling (CVE TOCTOU)\n\nReplaced insecure `/tmp/job_*` file paths with atomic `tempfile.NamedTemporaryFile(delete=True)` and `os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)`.\nPrevents symlink race condition attacks.",
+      "url": "https://github.com/zhangjiayang6835-cyber/ai-research/issues/1503#issuecomment-5111997092",
+      "is_attempt": false,
+      "is_settled": false,
+      "is_maintainer_feedback": false,
+      "is_missed_gap": false
+    },
+    {
+      "id": 5188100809,
+      "user": "bilaldeveloper4312",
+      "created_at": "2026-08-05T05:53:47Z",
+      "updated_at": "2026-08-05T05:53:47Z",
+      "body": "## Fix for TOCTOU Race Condition in /tmp File Handling\n\n```python\n# Secure temporary file and lock utilities to prevent race conditions\nimport os\nimport tempfile\nimport stat\nimport time\nimport errno\n\nclass SecureTempFile:\n    def __init__(self, prefix=\"tmp\", dir=\"/tmp\"):\n        self.dir = dir\n        self.prefix = prefix\n        self.fd = None\n        self.path = None\n\n    def __enter__(self):\n        self.fd, self.path = tempfile.mkstemp(\n            prefix=self.prefix,\n            dir=self.dir,\n            suffix=\".lock\"\n        )\n        os.chmod(self.path, stat.S_IRUSR | stat.S_IWUSR)\n        fstat = os.fstat(self.fd)\n        assert fstat.st_uid == os.getuid()\n        return self\n\n    def write(self, data: bytes):\n        os.write(self.fd, data)\n        os.fsync(self.fd)\n\n    def read(self) -> bytes:\n        os.lseek(self.fd, 0, os.SEEK_SET)\n        return os.read(self.fd, 4096)\n\n    def get_path(self) -> str:\n        return self.path\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if self.fd is not None:\n            os.close(self.fd)\n        if self.path and os.path.exists(self.path):\n            os.unlink(self.path)\n\nclass SecureFileLock:\n    def __init__(self, lock_path: str):\n        self.lock_path = lock_path\n        self.lock_fd, self.lock_temp = tempfile.mkstemp(\n            dir=os.path.dirname(lock_path)\n        )\n        os.close(self.lock_fd)\n\n    def acquire(self, timeout: float = 10.0) -> bool:\n        start = time.time()\n        while True:\n            try:\n                os.link(self.lock_temp, self.lock_path)\n                return True\n            except OSError as e:\n                if e.errno != errno.EEXIST:\n                    raise\n                if time.time() - start > timeout:\n                    return False\n                time.sleep(0.01)\n\n    def release(self):\n        try:\n            os.unlink(self.lock_path)\n        except FileNotFoundError:\n            pass\n        finally:\n            try:\n                os.unlink(self.lock_temp)\n            except FileNotFoundError:\n                pass\n```",
+      "url": "https://github.com/zhangjiayang6835-cyber/ai-research/issues/1503#issuecomment-5188100809",
+      "is_attempt": false,
+      "is_settled": false,
+      "is_maintainer_feedback": false,
+      "is_missed_gap": false
+    },
+    {
+      "id": 5188102111,
+      "user": "github-actions[bot]",
+      "created_at": "2026-08-05T05:53:57Z",
+      "updated_at": "2026-08-05T05:53:57Z",
+      "body": "## \u2705 Evaluation Passed\n\nSubmitter (bold): @bilaldeveloper4312\nTask (bold): #1503\nDifficulty (bold): hard\nScore (bold): 100/100\n\nNo suspicious patterns detected, submission accepted.\\n\\n> \\u2728 \\u865a\\u62df\\u4ee3\\u5e01\\u4ec5\\u4f9b\\u5b66\\u4e60\\u6392\\u540d\\u4f7f\\u7528\\uff0c\\u4e0d\\u53ef\\u5151\\u6362\\u4e3a\\u73b0\\u91d1\\u6216\\u52a0\\u5bc6\\u8d27\\u5e01\\u3002\\u611f\\u8c22\\u8d21\\u732e\\uff01",
+      "url": "https://github.com/zhangjiayang6835-cyber/ai-research/issues/1503#issuecomment-5188102111",
+      "is_attempt": false,
+      "is_settled": false,
+      "is_maintainer_feedback": false,
+      "is_missed_gap": false
+    }
+  ]
+}

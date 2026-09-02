@@ -1,4 +1,4 @@
-# AGENTS.md — ai-research-bounty-95
+# AGENTS.md — ai-research-bounty-1503
 
 > 墨子 Harness · GitHub bounty task
 
@@ -9,8 +9,8 @@
 - **项目名称**: ai-research
 - **仓库地址**: https://github.com/zhangjiayang6835-cyber/ai-research.git
 - **技术栈**: Python security demos + pytest; npm scripts wrap Harness commands
-- **目标**: Fix Buffer Overflow in Native Module by adding bounded, length-aware native-input handling helpers and regression tests
-- **Bounty链接**: https://github.com/zhangjiayang6835-cyber/ai-research/issues/95
+- **目标**: Fix Race Condition in /tmp File Handling (TOCTOU) with atomic temp-file and lock helpers plus regression tests
+- **Bounty链接**: https://github.com/zhangjiayang6835-cyber/ai-research/issues/1503
 
 ---
 

@@ -1,10 +1,21 @@
-"""Submission entrypoint for issue #95: Buffer Overflow in Native Module."""
+"""Submission entrypoint for issue #1503: Race Condition in /tmp File Handling (TOCTOU)."""
 
-from fixes.native_buffer_overflow_fix import copy_to_fixed_buffer, validate_native_buffer
+from fixes.toctou_tmp_file_fix import (
+    SecureTempFile,
+    ToctouSecurityError,
+    create_named_lock,
+    create_secure_temp_file,
+    release_named_lock,
+)
 
-
-__all__ = ["copy_to_fixed_buffer", "validate_native_buffer"]
+__all__ = [
+    "SecureTempFile",
+    "ToctouSecurityError",
+    "create_named_lock",
+    "create_secure_temp_file",
+    "release_named_lock",
+]
 
 
 if __name__ == "__main__":
-    print("fix #95: native buffer inputs are length-checked before fixed-buffer copies")
+    print("fix #1503: /tmp temp files are created atomically without TOCTOU races")
