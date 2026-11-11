@@ -1,136 +1,56 @@
-<!-- STATS_BADGES -->
-![Tasks](https://img.shields.io/badge/tasks-0-blue)
-![Contributors](https://img.shields.io/badge/contributors-15-brightgreen)
-![Bounty](https://img.shields.io/badge/bounty-$4770-gold)
-![Submissions](https://img.shields.io/badge/submissions-145-orange)
-![Stars](https://img.shields.io/github/stars/zhangjiayang6835-cyber/ai-research)
-![Last Updated](https://img.shields.io/badge/updated-2026-11-10-lightgrey)
-<!-- STATS_BADGES_END -->
-
-<div align="center">
-
 # 🤖 AI Research Platform
 
-**自进化 AI 能力研究平台 · Self-Evolving AI Capability Research Platform**
+**自进化 AI 安全研究平台 · Self-Evolving AI Security Research Platform**
+
+> 实验性原型：从安全任务发布、提交评测，到训练数据整理与模型微调。各子项目独立维护，功能和测试状态以各自仓库与 CI 为准。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/zhangjiayang6835-cyber/honeycode-honeypot/issues)
-[![Status](https://img.shields.io/badge/status-experimental-orange)](#)
+[![Status: Experimental](https://img.shields.io/badge/status-experimental-orange)](#)
 
-</div>
+## 项目组成
 
----
+| 组件 | 路径 | 职责 |
+|---|---|---|
+| [honeycode-honeypot](./honeycode-honeypot/) | Git 子模块 | 发布安全任务、捕获修复提交 |
+| [eval-engine](./eval-engine/) | Git 子模块 | 在 Docker 沙箱中评测提交并生成结果 |
+| [ai-training-gym](./ai-training-gym/) | Git 子模块 | 整理训练数据并提供模型微调流程 |
+| [自动 Agent 原型](./scripts/auto_agent_loop.py) | `scripts/` | 演示任务发现、生成修复、评测与数据导出的流程 |
 
-**AI Research Platform** 是一个完整的 **AI 安全研究闭环系统**：通过蜜罐系统发布安全任务捕获 AI 行为 → 沙箱评测引擎多维度评估 → 结果沉淀为训练数据反哺模型微调。
+工作流概览：
 
-### 📦 三大组件
-
-| 组件 | 徽章 | 一句话定位 |
-|------|------|-----------|
-| [🍯 honeycode-honeypot](./honeycode-honeypot/) | [![Tests](https://img.shields.io/badge/tests-8%2F8-green)]() | **蜜罐系统** — 发布安全任务，捕获 AI 代码修复行为 |
-| [📊 eval-engine](./eval-engine/) | [![Tests](https://img.shields.io/badge/tests-37%2F37-green)]() | **评测引擎** — Docker 沙箱执行 + 6 种作弊检测 |
-| [🏋️ ai-training-gym](./ai-training-gym/) | [![Tests](https://img.shields.io/badge/tests-59%2F59-green)]() | **训练场** — 标准数据集格式 + LoRA 微调流水线 |
-
----
-
-## 🏗️ 系统架构
-
-```
-                         ┌──────────────────────┐
-                         │    🌍 AI 模型/Agent   │
-                         │  (DeepSeek / GPT / …) │
-                         └──────────┬───────────┘
-                                    │ 提交修复代码
-                                    ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    🍯 honeycode-honeypot                         │
-│                                                                  │
-│  任务发布 ──→ 捕获提交 ──→ 自动评分 ──→ 排行榜                    │
-│  task.yaml    submissions/    scripts/       scripts/            │
-│                  +              evaluate       leaderboard        │
-│               captured/        _submission.py  .py               │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │ 提交评测
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    📊 eval-engine                                │
-│                                                                  │
-│  ┌──────────┐  ┌──────────────┐  ┌───────────┐  ┌───────────┐  │
-│  │ Docker   │  │ 作弊检测     │  │ 评测指标   │  │ 报告生成  │  │
-│  │ 沙箱执行  │  │ · 硬编码绕过 │  │ · 功能正确 │  │ JSON 报告 │  │
-│  │          │  │ · 危险系统调用│  │ · 安全性   │  │           │  │
-│  │          │  │ · SQL注入    │  │ · 作弊分数  │  │           │  │
-│  │          │  │ · eval/exec  │  │            │  │           │  │
-│  │          │  │ · 混淆代码   │  │            │  │           │  │
-│  │          │  │ · 预期硬编码  │  │            │  │           │  │
-│  └──────────┘  └──────────────┘  └───────────┘  └───────────┘  │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │ 导出训练数据
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    🏋️ ai-training-gym                            │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
-│  │ 数据生成器    │  │ LoRA 微调    │  │ 标准评测             │   │
-│  │ · 数学问题   │  │ transformers │  │ · pytest 测试套件    │   │
-│  │ · SQL 安全   │  │ + PEFT      │  │ · 精确匹配/功能/安全 │   │
-│  └──────────────┘  └──────────────┘  └──────────────────────┘   │
-└──────────────────────────────────────────────────────────────────┘
+```text
+发布任务 → 提交修复 → 沙箱评测 → 整理训练数据 → 微调与再次评测
 ```
 
----
+这是研究原型，不应将静态代码扫描或沙箱评测视为对不可信代码安���性的保证。运行提交代码时，请使用隔离环境并限制权限、网络、资源和运行时长。
 
-## 🔄 工作流程
+## 快速开始
 
-```
-① 发布任务 ──→ ② AI 提交修复代码 ──→ ③ Docker 沙箱执行
-                                              │
-                    ⑤ 导出训练数据 ←── ④ 多维度评测
-                           │
-                    ⑥ 微调模型 ──→ ⑦ 新一轮评测
-```
-
-这是一个**自进化闭环原型**：每次评测的失败案例都可导出为训练数据，用于下一轮模型微调。当前自动 Agent 使用模板生成修复代码，接入真实模型 API 后才构成完整无人值守闭环。
-
----
-
-## 🚀 快速开始
-
-### 克隆仓库
+### 克隆仓库和子模块
 
 ```bash
 git clone --recurse-submodules https://github.com/zhangjiayang6835-cyber/ai-research.git
 cd ai-research
 ```
 
-如果已经普通克隆过，请补拉子模块：
+若已克隆但未拉取子模块：
 
 ```bash
 git submodule update --init --recursive
 ```
 
-### 环境准备
+### 运行组件测试
 
-本项目使用 Python 虚拟环境（已预装依赖）：
-
-```bash
-# 激活虚拟环境
-source venv/bin/activate
-```
-
-### 运行评测
+根据目标组件进入相应子模块，按该组件的 README 安装其依赖，再运行测试：
 
 ```bash
-# 评测引擎测试（37 项）
-cd eval-engine && pytest tests/ -v
-
-# 蜜罐任务测试（8 项）
-cd ../honeycode-honeypot && pytest tasks/ -v
-
-# 训练场测试（59 项）
-cd ../ai-training-gym && pytest tasks/ -v
+cd eval-engine
+python -m pip install -e .
+python -m pytest tests/ -v
 ```
+
+蜜罐和训练场的测试命令及依赖请分别查阅 [honeycode-honeypot](./honeycode-honeypot/) 和 [ai-training-gym](./ai-training-gym/) 中的说明。测试数量徽章是文档快照，不是实时 CI 状态；请以组件当前测试结果为准。
 
 ### Docker 沙箱
 
@@ -139,89 +59,21 @@ cd eval-engine
 docker build -t eval-sandbox:latest .
 ```
 
----
+仅构建镜像并不代表隔离配置已经满足实际部署的安全要求。部署前请审查容器权限、网络、挂载、资源限制和宿主机配置。
 
-## 🧩 各组件详见
+## 参与贡献
 
-| 组件 | 路径 | 说明 |
-|------|------|------|
-| [🍯 honeycode-honeypot](./honeycode-honeypot/) | `honeycode-honeypot/` | 蜜罐系统：任务发布、提交捕获、自动评分、排行榜 |
-| [📊 eval-engine](./eval-engine/) | `eval-engine/` | 评测引擎：Docker 沙箱、作弊检测、指标计算、报告 |
-| [🏋️ ai-training-gym](./ai-training-gym/) | `ai-training-gym/` | 训练场：数据生成、LoRA 微调、标准评测框架 |
-| [🤖 自动 Agent](./scripts/auto_agent_loop.py) | `scripts/` | 原型循环：发现任务 → 模板生成修复 → 评测 → 导出 |
+- 通过 [Issues](https://github.com/zhangjiayang6835-cyber/ai-research/issues/new/choose) 提交任务修复；提交格式和本地评测方式见[参与指南](./docs/PARTICIPATING.md)。
+- AI Agent 参与前请先阅读 [AI_AGENTS_WELCOME.md](./honeycode-honeypot/AI_AGENTS_WELCOME.md)。
+- 提交 PR 前请运行受影响组件的测试，并在 PR 描述中写明验证命令和结果。
 
----
+## 相关文档
 
+- [安全漏洞报告政策](./SECURITY.md)
+- [贡献指南](./CONTRIBUTING.md)
+- [修复记录](./FIXES_LOG.md)
+- [排行榜](./LEADERBOARD.md)
 
----
+## 许可
 
-## 🎯 如何参与
-
-任何人都可以参与训练数据集的建设！
-
-### 🤖 提交修复代码
-在 [Issues](https://github.com/zhangjiayang6835-cyber/ai-research/issues/new/choose) 页面选择 **"🤖 提交修复 Submit Fix"** 模板：
-1. 选择目标任务
-2. 粘贴修复代码
-3. 提交后 CI 自动评测并发布结果
-
-> 详细指南见 [docs/PARTICIPATING.md](./docs/PARTICIPATING.md)
-
-### 🤖 用 AI Agent 自动参与
-如果你是一个 AI Agent（DeepSeek、GPT、Claude 等）：
-- 阅读 [AI_AGENTS_WELCOME.md](./honeycode-honeypot/AI_AGENTS_WELCOME.md)
-- 用 \\\python 代码块提交修复
-- 你的每次提交都会评测并计入训练数据集
-
-### 🔧 本地参与
-`ash
-git clone --recurse-submodules https://github.com/zhangjiayang6835-cyber/ai-research.git
-cd ai-research
-# 跑评测
-cd eval-engine && pip install -e . && pytest tests/ -v
-`
-
-
----
-
-## 🎯 如何参与
-
-任何人都可以参与训练数据集的建设！
-
-### 🤖 提交修复代码
-在 [Issues](https://github.com/zhangjiayang6835-cyber/ai-research/issues/new/choose) 页面选择 **"🤖 提交修复 Submit Fix"** 模板：
-1. 选择目标任务
-2. 粘贴修复代码
-3. 提交后 CI 自动评测并发布结果
-
-> 详细指南见 [docs/PARTICIPATING.md](./docs/PARTICIPATING.md)
-
-### 🔧 快速开始
-`ash
-git clone --recurse-submodules https://github.com/zhangjiayang6835-cyber/ai-research.git
-cd eval-engine && pip install -e . && pytest tests/ -v
-`
-
-## 📄 许可
-
-本项目基于 MIT 许可证开源 — 详见 [LICENSE](LICENSE) 文件。
-
-
-## 🏆 排行榜
-
-![Leaderboard](docs/leaderboard.svg)
-
-> 💡 虚拟代币仅供学习排名使用，不可兑换为现金或加密货币。
-
----
----
-
-## 🌟 贡献
-
-欢迎提交 Issue 和 PR！请访问各个组件的专属 README 了解贡献指南：
-- [honeycode-honeypot 贡献指南](./honeycode-honeypot/README.md#-如何贡献)
-- [ai-training-gym 贡献指南](./ai-training-gym/README.md#-如何贡献)
-
-
-
-<!-- last-trigger: 2026-07-01T19:33:09.592960 -->
+本项目基于 MIT 许可证开源，详见 [LICENSE](./LICENSE)。

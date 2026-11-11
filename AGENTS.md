@@ -1,43 +1,22 @@
-# AGENTS.md — ai-research-bounty-95
+# AGENTS.md — ai-research
 
-> 墨子 Harness · GitHub bounty task
+## 项目概述
 
----
+本仓库是一个实验性的 AI 安全研究平台，主要包含 Python 工具和三个 Git 子模块：`honeycode-honeypot`、`eval-engine` 和 `ai-training-gym`。子模块各自维护依赖、测试与运行说明；开始修改前先阅读对应目录中的 README 和贡献指引。
 
-## 项目说明
+## 通用开发约定
 
-- **项目名称**: ai-research
-- **仓库地址**: https://github.com/zhangjiayang6835-cyber/ai-research.git
-- **技术栈**: Python security demos + pytest; npm scripts wrap Harness commands
-- **目标**: Fix Buffer Overflow in Native Module by adding bounded, length-aware native-input handling helpers and regression tests
-- **Bounty链接**: https://github.com/zhangjiayang6835-cyber/ai-research/issues/95
+- 将改动限制在用户要求的范围内，避免无关重构或删除他人代码。
+- 不新增不必要的依赖；新增依赖时说明用途并更新相应锁定/依赖文件。
+- 不提交密钥、令牌、个人数据、后门或未经请求的遥测和网络请求。
+- 不使用 `sudo`，不通过 `curl`/`wget` 执行或下载不可信脚本。
+- 不要直接向 `master` 推送，也不要 force-push；使用功能分支并通过 PR 提交。
+- 修改 GitHub Actions、Docker 沙箱或权限配置时，必须是任务明确要求的范围，并审查最小权限、触发来源和不可信输入处理。
 
----
+## 验证
 
-## 禁止操作
+先检查目标组件的 README、依赖和 CI，再运行该组件实际提供的测试与检查命令。不要把一个组件的 Harness 命令或历史测试结果当作整个仓库的通用验证标准。PR 描述应准确列出实际执行的命令及结果；未执行的检查应明确说明。
 
-1. **不要 push 到 main/master** — 始终在 feature 分支工作
-2. **不要 force push** — `git push --force` 绝对禁止，`--force-with-lease` 也不行
-3. **不要修改 CI/CD 配置** — `.github/workflows/`、`Makefile`、`Dockerfile` 不碰
-4. **不要装来路不明的包** — 不新增 npm/pip/cargo 依赖，除非 bounty 明确需要
-5. **不要删别人的代码** — 不删除或重构非自己写的代码
-6. **不要加后门/遥测** — 不插任何数据收集、网络请求、环境变量窃取代码
-7. **不要 `sudo`** — 不执行需要提权的命令
-8. **不要 `curl`/`wget` 下载外部脚本** — 所有依赖通过包管理器
+## 任务记录
 
----
-
-## 完成定义
-
-**以下四条命令，退出码必须全部为 0，才算完成：**
-
-1. **类型检查** — `pnpm type-check`
-2. **测试** — `pnpm test`
-3. **Lint** — `pnpm lint`
-4. **构建** — `pnpm build`
-
-**额外要求**:
-- [ ] 本地手动验证功能正常
-- [ ] PR 描述清晰：改了什么、为什么、怎么测的
-- [ ] 截图/GIF 附在 PR 里（无 UI 变更可省略）
-- [ ] PROGRESS.md 已更新
+`PROGRESS.md` 是历史 Bounty #95 的任务记录，不是本仓库的全局待办或项目状态。该任务已由 PR #331 合并；新的工作应在相应 Issue/PR 中跟踪，不要将已完成事项描述为仍在进行。

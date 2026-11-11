@@ -1,32 +1,18 @@
-# 🔐 凭证安全指引
+# 🔐 GitHub Actions 凭证安全指引
 
-## 当前配置
-本项目使用 GitHub Personal Access Token (PAT) 进行跨 Workflow 操作（读取脚本、触发 Workflow）。
+## 凭证使用原则
 
-## 安全建议
+优先使用工作流的 `GITHUB_TOKEN`（表达式 `${{ github.token }}`），并在工作流或 job 级别只授予任务所需的最小权限。不要因为本文件就创建或保留 PAT：只有在确实需要跨仓库或跨工作流能力、且内置令牌无法满足时，才考虑单独的凭证，并先确认权限边界和触发流程。
 
-### 1. 使用 Fine-Grained PAT（推荐）
-代替当前的全仓库权限 PAT，创建 Fine-Grained PAT 并限制：
-- **仓库**: zhangjiayang6835-cyber/ai-research 仅此仓库
-- **权限**:
-  | 权限 | 级别 |
-  |------|:----:|
-  | Actions | Read |
-  | Contents | Read & Write |
-  | Issues | Read & Write |
-  | Metadata | Read |
-  | Pull Requests | Read & Write |
-  | **Webhooks** | **❌ 不授权** |
+仓库工作流当前多处直接使用 `github.token` / `github.token` 对应的 Actions 上下文；本文件不声称仓库必然配置了 PAT。新增或调整工作流时，请以实际 YAML、仓库设置和触发方式为准，逐项核对权限，避免把写权限授予仅需读取的任务。
 
-### 2. 定期轮换
-- 每 90 天轮换一次 GH_TOKEN
-- 在 GitHub Secrets 中更新，无需修改代码
+## 如确需使用 PAT
 
-### 3. Secret 命名规范
-| Secret | 用途 | 存储位置 |
-|--------|------|---------|
-| GH_TOKEN | 跨 Workflow 通信 | GitHub Secrets |
-| DISCORD_WEBHOOK | 通知推送 | GitHub Secrets（可选）|
+- 使用 fine-grained PAT，限制到必要的仓库和权限；不要使用全仓库或组织级宽权限令牌。
+- 将令牌仅存入 GitHub Actions Secrets，不写入源码、日志、Issue、PR 或提交历史。
+- 设置负责人、用途、到期时间和撤销/轮换流程，并定期审计是否仍有必要。
+- 对来自 fork、Issue、PR 评论等不可信事件，不要将可写凭证暴露给不可信代码或未经验证的输入。
 
-### 4. 审计
-所有凭证操作通过 GitHub Actions 日志可追溯。
+## Secret 与审计
+
+仅在工作流确实需要时配置 Secrets（例如通知 Webhook）；避免复制或打印 Secret。审查 workflow 的 `permissions`、事件触发器及第三方 Action 的权限后再授权。GitHub Actions 日志可用于审查运行过程，但不应记录凭证值。
