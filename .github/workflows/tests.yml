@@ -24,11 +24,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
 
-      - name: Verify library modules import cleanly
-        # fixes/ and src/ are the reference implementations the tests exercise.
-        # Compiling them first turns a syntax error into a clear, separate signal
-        # instead of a confusing collection error inside pytest.
-        run: python -m compileall -q fixes src && echo "all library modules compile"
+      - name: Verify modules under test import cleanly
+        # Only the modules tests/ actually imports, not the whole of fixes/ and
+        # src/. Those directories contain pre-existing files that do not parse,
+        # and compiling all of them reported failures unrelated to any given
+        # change. Covering the imported ones turns a real syntax error into a
+        # clear signal instead of a confusing collection error inside pytest.
+        run: python .github/scripts/check_test_imports.py
 
       - name: Run test suite
         run: python -m pytest -q
