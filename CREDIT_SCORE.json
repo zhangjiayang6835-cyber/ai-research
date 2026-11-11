@@ -1,7 +1,7 @@
 {
   "Rachaelisa": {
     "total_honey": 1410,
-    "credit_score": 100.0,
+    "credit_score": 100,
     "task_count": 43,
     "grade": "diamond"
   },
@@ -64,5 +64,11 @@
     "credit_score": 7.1,
     "task_count": 3,
     "grade": "bronze"
+  },
+  "zhangjiayang6835-cyber": {
+    "score": 10,
+    "merged": 1,
+    "totalBounty": 0,
+    "lastMerge": "2026-11-11T14:45:42.040Z"
   }
 }
