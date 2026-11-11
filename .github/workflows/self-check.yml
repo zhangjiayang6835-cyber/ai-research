@@ -8,6 +8,7 @@ on:
 permissions:
   issues: write
   contents: read
+  actions: read
 
 jobs:
   self-check:
@@ -16,89 +17,118 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validate Workflow YAML
+        shell: bash
         run: |
-          echo "=== Checking workflow files ==="
-          for f in .github/workflows/*.yml; do
-            if [ -f "$f" ]; then
-              echo -n "  $f: "
-              python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>&1 && echo "OK" || echo "BROKEN"
+          set -euo pipefail
+          shopt -s nullglob
+          files=(.github/workflows/*.yml .github/workflows/*.yaml)
+          if ((${#files[@]} == 0)); then
+            echo "No workflow YAML files found" >&2
+            exit 1
+          fi
+
+          failed=0
+          for file in "${files[@]}"; do
+            printf 'Checking %s: ' "$file"
+            if ruby -e 'require "yaml"; YAML.parse_file(ARGV.fetch(0))' "$file" >/dev/null; then
+              echo "OK"
+            else
+              echo "BROKEN" >&2
+              failed=1
             fi
           done
+          exit "$failed"
 
       - name: Validate JSON Ledgers
+        shell: bash
         run: |
-          echo "=== Checking JSON files ==="
-          for f in BOUNTY_LEDGER.json TIME_LEDGER.json; do
-            if [ -f "$f" ]; then
-              echo -n "  $f: "
-              python3 -c "import json; json.load(open('$f'))" 2>&1 && echo "VALID" || echo "CORRUPT"
+          set -euo pipefail
+          files=(BOUNTY_LEDGER.json TIME_LEDGER.json)
+          failed=0
+          for file in "${files[@]}"; do
+            printf 'Checking %s: ' "$file"
+            if [[ ! -f "$file" ]]; then
+              echo "MISSING" >&2
+              failed=1
+            elif ruby -rjson -e 'JSON.parse(File.read(ARGV.fetch(0)))' "$file" >/dev/null; then
+              echo "VALID"
+            else
+              echo "CORRUPT" >&2
+              failed=1
             fi
           done
+          exit "$failed"
 
-      - name: Check Workflow Completeness
+      - name: Check Required Workflows
         uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Expected workflows
+            // These are required core workflows. Match the API's workflow.path
+            // exactly; display names are not stable identifiers and can differ
+            // from file names (for example, "Auto Rebase & Merge").
             const expected = [
-              "auto-create-tasks", "auto-merge", "bounty-payout",
-              "capture-submission", "daily-monitor", "evaluate-submission",
-              "hall-of-fame", "issue-claim", "notifications", "pr-review",
-              "review-new-issue", "sandbox-verify", "spam-detection",
-              "stale-cleanup", "stats-dashboard", "task-capacity",
-              "update-time-leaderboard", "weekly-report", "achievements"
+              ".github/workflows/auto-create-tasks.yml",
+              ".github/workflows/challenge-verify.yml",
+              ".github/workflows/codeql-analysis.yml",
+              ".github/workflows/daily-monitor.yml",
+              ".github/workflows/evaluate-submission.yml",
+              ".github/workflows/issue-claim.yml",
+              ".github/workflows/notifications.yml",
+              ".github/workflows/pr-review.yml",
+              ".github/workflows/sandbox-verify.yml",
+              ".github/workflows/self-check.yml",
+              ".github/workflows/stats-dashboard.yml"
             ];
 
-            const { data: workflows } = await github.rest.actions.listRepoWorkflows({ owner, repo });
-            const actual = workflows.workflows.map(w => w.name.toLowerCase().replace(/[^a-z-]/g, ""));
-
-            const missing = expected.filter(e => !actual.some(a => a.includes(e)));
+            const workflows = await github.paginate(
+              github.rest.actions.listRepoWorkflows,
+              { owner, repo, per_page: 100 }
+            );
+            const actualPaths = new Set(workflows.map(workflow => workflow.path));
+            const missing = expected.filter(path => !actualPaths.has(path));
 
             let report = "## 🤖 Bot 自检报告\n\n";
-            report += `| 检查项 | 状态 |\n`;
-            report += `|:-----|:----:|\n`;
-
-            // Check each
-            for (const w of expected) {
-              const found = actual.some(a => a.includes(w));
-              report += `| ${w} | ${found ? "✅" : "❌"} |\n`;
+            report += "此检查只确认必需 workflow 文件已被 GitHub Actions 识别，并不代表最近运行均成功。\n\n";
+            report += "| 必需工作流文件 | Actions 已识别 |\n|:---|:---:|\n";
+            for (const path of expected) {
+              report += `| \`${path}\` | ${actualPaths.has(path) ? "✅" : "❌"} |\n`;
             }
 
-            report += `\n`;
             if (missing.length > 0) {
-              report += `**缺失**: ${missing.join(", ")}\n\n`;
-              report += `⚠️ 部分 Workflow 未找到，可能存在配置问题。\n`;
+              report += `\n**未识别的必需工作流：** ${missing.map(path => `\`${path}\``).join(", ")}\n`;
             } else {
-              report += "✅ 所有 Workflow 正常运行\n";
+              report += "\n✅ 所有必需工作流均已被 Actions 识别。\n";
             }
+            report += `\n> 检查时间：${new Date().toISOString()}\n`;
+            report += "\n---\n*🤖 Bot Self-Check*\n";
 
-            report += `\n> 下次自检: ${new Date(Date.now() + 7*86400000).toISOString().slice(0, 10)}\n`;
-            report += `---\n*🤖 Bot Self-Check*\n`;
-
-            // Create/update self-check issue
+            // Update the health issue before failing this step so the failure
+            // details remain visible even when the workflow check is red.
             const { data: existing } = await github.rest.issues.listForRepo({
               owner, repo, state: "open", labels: "bot-health", per_page: 1
             });
 
             if (existing.length > 0) {
               await github.rest.issues.update({
-                issue_number: existing[0].number, owner, repo,
+                issue_number: existing[0].number,
+                owner,
+                repo,
                 title: `🤖 Bot 健康检查 (${new Date().toISOString().slice(0, 10)})`,
                 body: report
               });
             } else {
               await github.rest.issues.create({
-                owner, repo,
-                title: `🤖 Bot 健康检查`,
+                owner,
+                repo,
+                title: "🤖 Bot 健康检查",
                 body: report,
                 labels: ["bot-health"]
               });
             }
 
             if (missing.length > 0) {
-              core.setFailed("Missing workflows: " + missing.join(", "));
-              return;
+              core.setFailed("Required workflow files not registered with Actions: " + missing.join(", "));
             }
