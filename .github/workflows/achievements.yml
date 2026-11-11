@@ -20,6 +20,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/github-script@v7
+        env:
+          TARGET_USER: ${{ github.event.inputs.user }}
         with:
           script: |
             const owner = context.repo.owner;
@@ -40,7 +42,7 @@ jobs:
               tledger = JSON.parse(Buffer.from(f.content, "base64").toString());
             } catch (e) {}
 
-            const targetUser = "${{ github.event.inputs.user }}".trim();
+            const targetUser = (process.env.TARGET_USER || "").trim();
 
             const achievements = [];
             for (const [user, data] of Object.entries(ledger)) {

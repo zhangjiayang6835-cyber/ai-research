@@ -1,0 +1,4 @@
+# Test-only dependencies for the root `tests/` suite.
+# Runtime code under fixes/ and src/ is standard-library only.
+pytest>=7.4
+PyYAML>=6.0

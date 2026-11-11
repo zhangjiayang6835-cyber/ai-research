@@ -94,10 +94,14 @@ jobs:
 
       - name: Write Fix Code
         uses: actions/github-script@v7
+        env:
+          # env, not ${{ }}: inputs.code is submitter-supplied. Interpolating it into
+          # a JS template literal let any submitter break out with a backtick.
+          FIX_CODE: ${{ inputs.code }}
         with:
           script: |
             const fs = require("fs");
-            const code = `${{ inputs.code }}`;
+            const code = process.env.FIX_CODE || "";
             // Unescape the code
             const decoded = code
               .replace(/\\n/g, "\n")
@@ -117,16 +121,19 @@ jobs:
 
       - name: Report Sandbox Result
         uses: actions/github-script@v7
+        env:
+          EXIT_CODE: ${{ steps.sandbox.outputs.EXIT_CODE }}
+          PR_NUMBER: ${{ inputs.pr_number }}
         with:
           script: |
-            const exitCode = parseInt("${{ steps.sandbox.outputs.EXIT_CODE }}");
+            const exitCode = parseInt(process.env.EXIT_CODE, 10);
             const result = exitCode === 0 ? "✅ Sandbox: Fix verified" : "❌ Sandbox: Fix failed";
             console.log(result);
 
-            const prNum = parseInt("${{ inputs.pr_number }}");
+            const prNum = parseInt(process.env.PR_NUMBER, 10);
             if (!prNum || isNaN(prNum)) { console.log("No PR number, skipping comment"); return; }
             await github.rest.issues.createComment({
-              issue_number: parseInt("${{ inputs.pr_number }}"),
+              issue_number: prNum,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `## 🧪 Sandbox Verification\n\n${result}\n\n> 💡 虚拟代币仅供学习排名使用`
