@@ -39,40 +39,68 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require("fs");
+            const path = require("path");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Expected workflows
-            const expected = [
-              "auto-create-tasks", "auto-merge", "bounty-payout",
-              "capture-submission", "daily-monitor", "evaluate-submission",
-              "hall-of-fame", "issue-claim", "notifications", "pr-review",
-              "review-new-issue", "sandbox-verify", "spam-detection",
-              "stale-cleanup", "stats-dashboard", "task-capacity",
-              "update-time-leaderboard", "weekly-report", "achievements"
-            ];
+            // The files in .github/workflows/ are the source of truth. A
+            // hard-coded expected list used to live here and had drifted badly:
+            // it still named workflows that had been deleted and omitted eight
+            // that existed, so it could only ever report false failures.
+            const dir = ".github/workflows";
+            const files = fs.readdirSync(dir)
+              .filter(f => /\.ya?ml$/.test(f))
+              .map(f => f.replace(/\.ya?ml$/, ""))
+              .sort();
+
+            if (files.length === 0) {
+              core.setFailed(`${dir} contains no workflow files — checkout is missing?`);
+              return;
+            }
 
             const { data: workflows } = await github.rest.actions.listRepoWorkflows({ owner, repo });
-            const actual = workflows.workflows.map(w => w.name.toLowerCase().replace(/[^a-z-]/g, ""));
+            // GitHub keeps listing workflows whose file has been deleted from
+            // the default branch, so index by filename and reconcile both ways.
+            const registered = new Map();
+            for (const w of workflows.workflows) {
+              if (w.path.startsWith("dynamic/")) continue;
+              registered.set(path.basename(w.path).replace(/\.ya?ml$/, ""), w);
+            }
 
-            const missing = expected.filter(e => !actual.some(a => a.includes(e)));
+            // Present on disk but unknown to GitHub: the workflow will never run.
+            const missing = files.filter(f => !registered.has(f));
+            // Disabled in the UI, so it is registered but silent.
+            const disabled = files.filter(f => registered.get(f)?.state !== "active");
+            // Registered but the file is gone — harmless history, worth knowing.
+            const stale = [...registered.keys()].filter(r => !files.includes(r)).sort();
+
+            const failures = [...new Set([...missing, ...disabled])];
 
             let report = "## 🤖 Bot 自检报告\n\n";
-            report += `| 检查项 | 状态 |\n`;
+            report += `检查了 \`${dir}/\` 下的 ${files.length} 个 workflow 文件。\n\n`;
+            report += `| Workflow | 状态 |\n`;
             report += `|:-----|:----:|\n`;
 
-            // Check each
-            for (const w of expected) {
-              const found = actual.some(a => a.includes(w));
-              report += `| ${w} | ${found ? "✅" : "❌"} |\n`;
+            for (const f of files) {
+              const w = registered.get(f);
+              const mark = !w ? "❌ 未注册" : (w.state === "active" ? "✅" : `⚠️ ${w.state}`);
+              report += `| ${f} | ${mark} |\n`;
             }
 
             report += `\n`;
             if (missing.length > 0) {
-              report += `**缺失**: ${missing.join(", ")}\n\n`;
-              report += `⚠️ 部分 Workflow 未找到，可能存在配置问题。\n`;
-            } else {
-              report += "✅ 所有 Workflow 正常运行\n";
+              report += `**文件中存在但 GitHub 未注册**: ${missing.join(", ")}\n\n`;
+            }
+            if (disabled.length > 0) {
+              report += `**已注册但未启用**: ${disabled.join(", ")}\n\n`;
+            }
+            if (stale.length > 0) {
+              report += `> ℹ️ 仍有登记的已删除 workflow: ${stale.join(", ")}` +
+                        `（不影响运行，可忽略）\n\n`;
+            }
+            if (failures.length === 0) {
+              report += "✅ 所有 workflow 文件均已注册并启用\n";
             }
 
             report += `\n> 下次自检: ${new Date(Date.now() + 7*86400000).toISOString().slice(0, 10)}\n`;
@@ -98,7 +126,10 @@ jobs:
               });
             }
 
-            if (missing.length > 0) {
-              core.setFailed("Missing workflows: " + missing.join(", "));
+            // Only flag real problems: a workflow file that GitHub does not
+            // know about will never run, and one disabled in the UI is silent.
+            // Stale registrations are reported above but must not fail the run.
+            if (failures.length > 0) {
+              core.setFailed("Workflow files not registered or not active: " + failures.join(", "));
               return;
             }
