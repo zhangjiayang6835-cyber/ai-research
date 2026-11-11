@@ -59,11 +59,18 @@ jobs:
               return;
             }
 
-            const { data: workflows } = await github.rest.actions.listRepoWorkflows({ owner, repo });
+            // Paginate: the default page size is 30, and this repo already has
+            // more workflows than that. Reading only the first page silently
+            // truncates the list, which then looks like "file exists on disk
+            // but is not registered" and fails the check for no real reason.
+            const workflows = await github.paginate(
+              github.rest.actions.listRepoWorkflows,
+              { owner, repo, per_page: 100 },
+            );
             // GitHub keeps listing workflows whose file has been deleted from
             // the default branch, so index by filename and reconcile both ways.
             const registered = new Map();
-            for (const w of workflows.workflows) {
+            for (const w of workflows) {
               if (w.path.startsWith("dynamic/")) continue;
               registered.set(path.basename(w.path).replace(/\.ya?ml$/, ""), w);
             }
