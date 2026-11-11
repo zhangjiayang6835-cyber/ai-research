@@ -60,10 +60,11 @@ jobs:
               const addedLines = patch.split("\n").filter(l => l.startsWith("+") && !l.startsWith("+++"));
               const removedLines = patch.split("\n").filter(l => l.startsWith("-") && !l.startsWith("---"));
 
-              // Check for common fix patterns
-              const hasInputValidation = patch.some(l => /validate|sanitize|escape|strip/i.test(l));
-              const hasAuthCheck = patch.some(l => /auth|permission|role|access.*control/i.test(l));
-              const hasBoundsCheck = patch.some(l => /limit|max|check|bound|verify/i.test(l));
+              // Check for common fix patterns in the added lines
+              // NOTE: patch is a string; these checks must run against addedLines.
+              const hasInputValidation = addedLines.some(l => /validate|sanitize|escape|strip/i.test(l));
+              const hasAuthCheck = addedLines.some(l => /auth|permission|role|access.*control/i.test(l));
+              const hasBoundsCheck = addedLines.some(l => /limit|max|check|bound|verify/i.test(l));
 
               results.push({
                 file: filename,

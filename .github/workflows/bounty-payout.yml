@@ -21,6 +21,8 @@ jobs:
       - name: Calculate Payouts
         id: pay
         uses: actions/github-script@v7
+        env:
+          REQUEST_USER: ${{ github.event.inputs.user }}
         with:
           script: |
             const fs = require('fs');
@@ -32,7 +34,7 @@ jobs:
             }
 
             const ledger = JSON.parse(fs.readFileSync(ledgerFile, 'utf-8'));
-            const requestUser = '${{ github.event.inputs.user }}'.trim();
+            const requestUser = (process.env.REQUEST_USER || '').trim();
 
             let report = `## 💰 Bounty 排行榜 & 代币发放\n\n`;
             report += `| 排名 | 参与者 | 总收入 | 提交数 | 最高分 |\n`;

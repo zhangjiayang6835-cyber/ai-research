@@ -26,12 +26,16 @@ jobs:
       - name: Update Time Ledger
         id: time
         uses: actions/github-script@v7
+        env:
+          INPUT_USER: ${{ github.event.inputs.user }}
+          INPUT_ISSUE: ${{ github.event.inputs.issue }}
+          INPUT_ELAPSED_SEC: ${{ github.event.inputs.elapsed_sec }}
         with:
           script: |
             const fs = require("fs");
-            const user = "${{ github.event.inputs.user }}";
-            const issue = "${{ github.event.inputs.issue }}";
-            const elapsedSec = parseInt("${{ github.event.inputs.elapsed_sec }}");
+            const user = process.env.INPUT_USER;
+            const issue = process.env.INPUT_ISSUE;
+            const elapsedSec = parseInt(process.env.INPUT_ELAPSED_SEC || "0", 10);
             const now = new Date().toISOString();
 
             // Read or create TIME_LEDGER

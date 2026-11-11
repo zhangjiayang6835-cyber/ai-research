@@ -184,7 +184,10 @@ jobs:
             if (!hasTests) console.log("Tip: Add tests to verify the fix");
 
             // Auto-label
-            if (score >= 80 && qualityScore >= 70 && totalAdditions >= 5) {
+            // NOTE: `score` was never defined here (ReferenceError, which aborted the
+            // whole step before core.setOutput ran). The original score is totalScore;
+            // combinedScore is reserved for the "approved" decision below.
+            if (totalScore >= 80 && qualityScore >= 70 && totalAdditions >= 5) {
               const labels = pr.labels.map(l => l.name);
               if (!labels.includes("auto-reviewed")) {
                 await github.rest.issues.addLabels({ issue_number: pr.number, owner: context.repo.owner, repo: context.repo.repo, labels: ["auto-reviewed"] });
@@ -207,9 +210,13 @@ jobs:
 
       - name: Post Review Comment
         uses: actions/github-script@v7
+        env:
+          # env, not ${{ }}: the report embeds PR-controlled text (title/branch),
+          # so interpolation into a template literal would allow code injection.
+          REPORT: ${{ steps.analyze.outputs.report }}
         with:
           script: |
-            const report = `${{ steps.analyze.outputs.report }}`;
+            const report = process.env.REPORT;
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -219,11 +226,15 @@ jobs:
 
       - name: Add Labels
         uses: actions/github-script@v7
+        env:
+          CLEAN: ${{ steps.analyze.outputs.clean }}
+          SCORE: ${{ steps.analyze.outputs.score }}
+          DIFF: ${{ steps.analyze.outputs.diff }}
         with:
           script: |
-            const clean = '${{ steps.analyze.outputs.clean }}' === 'true';
-            const score = parseInt('${{ steps.analyze.outputs.score }}');
-            const diff = '${{ steps.analyze.outputs.diff }}';
+            const clean = process.env.CLEAN === 'true';
+            const score = parseInt(process.env.SCORE, 10);
+            const diff = process.env.DIFF;
 
             const labels = ['auto-reviewed'];
             if (clean) labels.push('approved');
@@ -240,15 +251,20 @@ jobs:
 
       - name: Save Score to Ledger
         uses: actions/github-script@v7
+        env:
+          SCORE: ${{ steps.analyze.outputs.score }}
+          CLEAN: ${{ steps.analyze.outputs.clean }}
+          DIFF: ${{ steps.analyze.outputs.diff }}
+          TARGET_ISSUE: ${{ steps.analyze.outputs.target_issue }}
         with:
           script: |
             const fs = require('fs');
             const pr = context.payload.pull_request;
             const author = pr.user.login;
-            const score = parseInt('${{ steps.analyze.outputs.score }}');
-            const clean = '${{ steps.analyze.outputs.clean }}' === 'true';
-            const diff = '${{ steps.analyze.outputs.diff }}';
-            const targetIssue = '${{ steps.analyze.outputs.target_issue }}';
+            const score = parseInt(process.env.SCORE, 10);
+            const clean = process.env.CLEAN === 'true';
+            const diff = process.env.DIFF;
+            const targetIssue = process.env.TARGET_ISSUE;
 
             let ledger = {};
             const ledgerFile = 'BOUNTY_LEDGER.json';

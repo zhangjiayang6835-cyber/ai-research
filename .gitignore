@@ -23,9 +23,12 @@ Thumbs.db
 # Project
 outputs/
 work/
-scripts/
-AGENTS.md
+eval-engine-tmp/
+
+# Local agent configuration — personal, never shared. The committed project
+# guidance lives in AGENTS.md, which is tracked on purpose: PROGRESS.md and the
+# workflows refer to it. `scripts/` used to be ignored here too, but the three
+# modules in it are real project code that the workflows run, so ignoring the
+# directory only meant new files there went unnoticed. Its contents are tracked.
 AGENTS.local.md
 REASONIX.md
-
-eval-engine-tmp/

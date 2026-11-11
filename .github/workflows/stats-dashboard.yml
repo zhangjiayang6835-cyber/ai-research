@@ -26,18 +26,25 @@ jobs:
 
             // Collect data from GitHub
             const { data: repoData } = await github.rest.repos.get({ owner, repo });
-            const { data: issues } = await github.rest.issues.listForRepo({
-              owner, repo, state: "open", per_page: 1, labels: "bug"
-            });
-            const { data: allIssues } = await github.rest.issues.listForRepo({
-              owner, repo, state: "all", per_page: 1, labels: "bug"
-            });
-            const { data: prs } = await github.rest.pulls.list({
-              owner, repo, state: "all", per_page: 1
-            });
 
-            // Count all open issues
-            let openCount = repoData.open_issues_count;
+            // Count issues and PRs. The REST list endpoints return bare arrays
+            // with no `total_count` field, so the previous reads of
+            // `allIssues.total_count` and `prs.total_count` were always 0 —
+            // which is why the "tasks" badge read 0 on a repo with hundreds of
+            // issues. Counting also cannot go through `open_issues_count`: that
+            // field includes open pull requests, so `openIssues` was inflated.
+            // The search API reports an exact `total_count` per query without
+            // transferring a single issue body.
+            const countFor = async (q) => {
+              const { data } = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${owner}/${repo} ${q}`,
+                per_page: 1,
+              });
+              return data.total_count;
+            };
+            const totalIssueCount = await countFor("is:issue");
+            const totalPrCount = await countFor("is:pr");
+            const openCount = await countFor("is:issue is:open");
 
             // Read BOUNTY_LEDGER
             let ledger = {};
@@ -48,7 +55,26 @@ jobs:
 
             const totalBounty = Object.values(ledger).reduce((s, u) => s + (u.total || 0), 0);
             const contributorCount = Object.keys(ledger).length;
-            const totalSubmissions = Object.values(ledger).reduce((s, u) => s + ((u.submissions || []).length || u.task_count || 0), 0);
+
+            // Two different things were being added together before: the
+            // `submissions` records (which carry a `score`) and each user's
+            // `task_count` (a self-declared tally with no score attached).
+            // Summing them produced a number that meant neither, and feeding
+            // it into avgScore compared currency against it. Count them
+            // separately and average only the scores that actually exist.
+            const entries = Object.values(ledger);
+            const totalSubmissions = entries.reduce(
+              (s, u) => s + (Array.isArray(u.submissions) ? u.submissions.length : 0), 0
+            );
+            const totalTasks = entries.reduce((s, u) => s + (u.task_count || 0), 0);
+            const scored = entries.flatMap((u) =>
+              (Array.isArray(u.submissions) ? u.submissions : [])
+                .map((x) => x.score)
+                .filter((n) => typeof n === "number")
+            );
+            const avgScore = scored.length
+              ? Math.round(scored.reduce((s, n) => s + n, 0) / scored.length)
+              : 0;
 
             // Build stats JSON
             const stats = {
@@ -56,12 +82,13 @@ jobs:
               stars: repoData.stargazers_count,
               forks: repoData.forks_count,
               openIssues: openCount,
-              totalIssues: allIssues.total_count || 0,
-              totalPRs: prs.total_count || 0,
+              totalIssues: totalIssueCount,
+              totalPRs: totalPrCount,
               contributors: contributorCount,
               totalBounty: totalBounty,
               totalSubmissions: totalSubmissions,
-              avgScore: totalSubmissions > 0 ? Math.round(totalBounty / totalSubmissions) : 0
+              totalTasks: totalTasks,
+              avgScore: avgScore
             };
 
             // Write to docs/stats.json

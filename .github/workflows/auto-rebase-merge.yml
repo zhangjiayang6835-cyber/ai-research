@@ -34,9 +34,11 @@ jobs:
       - name: Check mergeability
         id: check
         uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
         with:
           script: |
-            const prNum = parseInt("${{ steps.pr_info.outputs.pr_number }}");
+            const prNum = parseInt(process.env.PR_NUMBER, 10);
             if (!prNum) { core.setOutput("skip", "true"); return; }
             const pr = await github.rest.pulls.get({
               owner: context.repo.owner, repo: context.repo.repo, pull_number: prNum
@@ -81,9 +83,11 @@ jobs:
       - name: Close stale unmergeable PRs
         if: steps.merge.outputs.merged == 'false'
         uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
         with:
           script: |
-            const prNum = parseInt("${{ steps.pr_info.outputs.pr_number }}");
+            const prNum = parseInt(process.env.PR_NUMBER, 10);
             const pr = await github.rest.pulls.get({
               owner: context.repo.owner, repo: context.repo.repo, pull_number: prNum
             });
